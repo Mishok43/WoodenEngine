@@ -33,9 +33,9 @@ namespace App3
 
 		bool Initialize(Windows::UI::Core::CoreWindow^ outputWindow);
 	private:
-		ID3D12Resource* CurrentBackBuffer() const noexcept;
-		D3D12_CPU_DESCRIPTOR_HANDLE CurrentBackBufferView() const noexcept;
-		D3D12_GPU_DESCRIPTOR_HANDLE CurrentCBVGPUHandle() const noexcept;
+		ID3D12Resource* CurrentBackBuffer() const ;
+		D3D12_CPU_DESCRIPTOR_HANDLE CurrentBackBufferView() const ;
+		D3D12_GPU_DESCRIPTOR_HANDLE CurrentCBVGPUHandle() const ;
 
 		// initialize device, fetch property data
 		void InitializeDevice();
@@ -77,7 +77,7 @@ namespace App3
 		ComPtr<ID3D12GraphicsCommandList> cmdList;
 		ComPtr<ID3D12CommandQueue> cmdQueue;
 
-		ComPtr<IDXGISwapChain1> deviceSwapChain;
+		ComPtr<IDXGISwapChain3> deviceSwapChain;
 
 		UINT currentBackBuffer = 0;
 

@@ -8,6 +8,9 @@ namespace App3
 
 	struct ConstData
 	{
+		XMFLOAT4X4 view_matrix;
+		XMFLOAT4X4 proj_matrix;
+		XMFLOAT4X4 view_proj_matrix;
 		XMFLOAT4X4 world_view_proj_matrix; // 64B
 	}; // 256B-256B=56B
 

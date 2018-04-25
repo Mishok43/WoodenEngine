@@ -4,7 +4,6 @@
 #include "App3Main.h"
 
 #include "Common\DirectXHelper.h"
-
 #include "ShaderStructures.h"
 
 #define _DEBUG
@@ -45,39 +44,49 @@ bool App3Main::Initialize(Windows::UI::Core::CoreWindow^ outWindow)
 	ID3D12CommandList* cmdLists[] = { cmdList.Get() };
 	cmdQueue->ExecuteCommandLists(_countof(cmdLists), cmdLists);
 
+	WaitForGPU();
+
 
 	return true;
 }
 
 
-ID3D12Resource* App3::App3Main::CurrentBackBuffer() const noexcept
+ID3D12Resource* App3::App3Main::CurrentBackBuffer() const 
 {
 
 	return swapChainBuffers[currentBackBuffer].Get();
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE App3::App3Main::CurrentBackBufferView() const noexcept
+D3D12_CPU_DESCRIPTOR_HANDLE App3::App3Main::CurrentBackBufferView() const
 {
+	return DX::CD3DX12_CPU_DESCRIPTOR_HANDLE(
+		rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
+		currentBackBuffer,
+		rtvDescriptorHandleIncrementSize);
+/*
 	auto curBackBufferCPUHandle = rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
 	curBackBufferCPUHandle.ptr += currentBackBuffer * rtvDescriptorHandleIncrementSize;
-	return curBackBufferCPUHandle;
+	return curBackBufferCPUHandle;*/
 }
 
-D3D12_GPU_DESCRIPTOR_HANDLE App3::App3Main::CurrentCBVGPUHandle() const noexcept
+D3D12_GPU_DESCRIPTOR_HANDLE App3::App3Main::CurrentCBVGPUHandle() const 
 {
 	auto currentCBVDescriptorHeapGPUHandle = cbvDescriptorHeap->GetGPUDescriptorHandleForHeapStart();
-	currentCBVDescriptorHeapGPUHandle.ptr += currentBackBuffer * cbvDescriptorHandleIncrementSize;
+	currentCBVDescriptorHeapGPUHandle.ptr += 0* cbvDescriptorHandleIncrementSize;
 	return currentCBVDescriptorHeapGPUHandle;
 }
 
 void App3Main::CreateFrameResources()
 {
-	auto rtvDescriptorHeapHandle = rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+
+	currentBackBuffer = deviceSwapChain->GetCurrentBackBufferIndex();
+
+	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvDescriptor(rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
 	for (int i = 0; i < NMR_SWAP_BUFFERS; ++i)
 	{
 		deviceSwapChain->GetBuffer(i, IID_PPV_ARGS(&swapChainBuffers[i]));
-		device->CreateRenderTargetView(swapChainBuffers[i].Get(), nullptr, rtvDescriptorHeapHandle);
-		rtvDescriptorHeapHandle.ptr += rtvDescriptorHandleIncrementSize;
+		device->CreateRenderTargetView(swapChainBuffers[i].Get(), nullptr, rtvDescriptor);
+		rtvDescriptor.Offset(rtvDescriptorHandleIncrementSize);
 	}
 
 	D3D12_RESOURCE_DESC depthResourceDesc = CD3DX12_RESOURCE_DESC::Tex2D(depthStencilFormat, window->Bounds.Width, window->Bounds.Height, 1, 1);
@@ -103,8 +112,6 @@ void App3Main::CreateFrameResources()
 	depthStencilViewDesc.Texture2D.MipSlice = 0;
 
 	device->CreateDepthStencilView(depthStencilBuffer.Get(), &depthStencilViewDesc, dsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
-
-	//cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(depthStencilBuffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_DEPTH_WRITE));
 
 	screenViewport.Width = window->Bounds.Width;
 	screenViewport.Height = window->Bounds.Height;
@@ -250,7 +257,7 @@ void App3Main::CreateFrameResources()
 
 	const auto constBufferFrameSize = 256;
 
-	auto constBufferDesc = CD3DX12_RESOURCE_DESC::Buffer(NMR_SWAP_BUFFERS * constBufferFrameSize);
+	auto constBufferDesc = CD3DX12_RESOURCE_DESC::Buffer(NMR_SWAP_BUFFERS);
 	DX::ThrowIfFailed(device->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
 		D3D12_HEAP_FLAG_NONE,
@@ -265,7 +272,7 @@ void App3Main::CreateFrameResources()
 
 	auto cbvDescriptorHeapCPUHandle = cbvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
 	auto constBufferGPUAddress = constBuffer->GetGPUVirtualAddress();
-	for (int i = 0; i < NMR_SWAP_BUFFERS; ++i)
+	for (int i = 0; i < 1; ++i)
 	{
 		D3D12_CONSTANT_BUFFER_VIEW_DESC cbvViewDesc;
 		cbvViewDesc.SizeInBytes = constBufferFrameSize;
@@ -283,7 +290,6 @@ void App3Main::CreateFrameResources()
 
 void App3Main::InitializeDevice()
 {
-	// Initialize Device
 
 #if defined(_DEBUG)
 	// If the project is in a debug build, enable debugging via SDK Layers.
@@ -343,8 +349,6 @@ void App3Main::InitializeDescriptorHeaps()
 	cbvDescriptorHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 	cbvDescriptorHeapDesc.NumDescriptors = NMR_SWAP_BUFFERS; // frame's cbv = cube_cbv(world matrix) + const_cbv (viewProjMatrix + Game Time)
 	DX::ThrowIfFailed(device->CreateDescriptorHeap(&cbvDescriptorHeapDesc, IID_PPV_ARGS(&cbvDescriptorHeap)));
-
-
 	
 }
 
@@ -370,6 +374,7 @@ void App3::App3Main::InitializeSwapChain()
 	IDXGIFactory4* dxgiFactory = nullptr;
 	DX::ThrowIfFailed(CreateDXGIFactory1(IID_PPV_ARGS(&dxgiFactory)));
 
+	deviceSwapChain.Reset();
 
 	DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
 
@@ -386,13 +391,16 @@ void App3::App3Main::InitializeSwapChain()
 	swapChainDesc.Flags = 0;
 	swapChainDesc.AlphaMode = DXGI_ALPHA_MODE_IGNORE;
 
-
+	ComPtr<IDXGISwapChain1> swapChain;
 	DX::ThrowIfFailed(dxgiFactory->CreateSwapChainForCoreWindow(
 		cmdQueue.Get(),
 		reinterpret_cast<IUnknown*>(window.Get()),
 		&swapChainDesc,
 		nullptr,
-		&deviceSwapChain));
+		&swapChain));
+
+	DX::ThrowIfFailed(swapChain.As(&deviceSwapChain));
+
 }
 
 void App3Main::CompileShaders()
@@ -420,14 +428,13 @@ void App3Main::BuildRootSignature()
 		D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS;
 
 	CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc;
-	rootSignatureDesc.Init(1, parameters.begin(), 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+	rootSignatureDesc.Init(1, parameters.begin(), 0, nullptr, rootSignatureFlags);
 
 	ComPtr<ID3DBlob> rootSignatureBlob = nullptr;
 	ComPtr<ID3DBlob> rootSignatureBlobError = nullptr;
 	DX::ThrowIfFailed(D3D12SerializeRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &rootSignatureBlob, &rootSignatureBlobError));
 	if (rootSignatureBlobError != nullptr)
-	{
-	}
+	{}
 	
 	DX::ThrowIfFailed(device->CreateRootSignature(0, rootSignatureBlob->GetBufferPointer(), rootSignatureBlob->GetBufferSize(), IID_PPV_ARGS(&rootSignature)));
 }
@@ -442,13 +449,14 @@ void App3Main::BuildPipelineStateObject()
 	const D3D12_INPUT_ELEMENT_DESC inputElements[] =
 	{
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-	{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+		{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
 	};
 
 	inputLayout.pInputElementDescs = inputElements;
 	inputLayout.NumElements = 2;
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
+
 	psoDesc.InputLayout = inputLayout;
 	
 	psoDesc.pRootSignature = rootSignature.Get();
@@ -465,14 +473,13 @@ void App3Main::BuildPipelineStateObject()
 	psoDesc.SampleDesc.Quality = 0;
 	psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 
-
-	
 	
 	DX::ThrowIfFailed(device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&pso)));
 }
 
 void App3::App3Main::Update()
 {
+
 	UpdateConstBuffers();
 	WaitForGPU();
 }
@@ -490,7 +497,7 @@ void App3::App3Main::MouseMoved(const float dx, const float dy) noexcept
 
 
 void App3::App3Main::UpdateConstBuffers()
-{	
+{
 	ConstData constData;
 
 	// Update the view matrix
@@ -505,23 +512,23 @@ void App3::App3Main::UpdateConstBuffers()
 
 	const auto viewMatrix = XMMatrixLookAtLH(XMLoadFloat4(&cameraPosition), XMLoadFloat4(&cameraFocus), XMLoadFloat4(&upDirecation));
 
-	//XMStoreFloat4x4(&constData.view_matrix, viewMatrix);
+	XMStoreFloat4x4(&constData.view_matrix, viewMatrix);
 	
 	// Update the perspective matrix
 	const auto width = window->Bounds.Width;
 	const auto height = window->Bounds.Height;
 
 	const auto projMatrix = XMMatrixPerspectiveFovLH(XM_PI / 4.0f, window->Bounds.Width / window->Bounds.Height, 1.0, 1000.0f);
-	//XMStoreFloat4x4(&constData.proj_matrix, projMatrix);
+	XMStoreFloat4x4(&constData.proj_matrix, projMatrix);
 
 	const auto viewProjMatrix = viewMatrix * projMatrix;
-	//XMStoreFloat4x4(&constData.view_proj_matrix, viewProjMatrix);
+	XMStoreFloat4x4(&constData.view_proj_matrix, viewProjMatrix);
 
 	const auto worldMatrix = XMMatrixScaling(1, 1, 1);
 	const auto worldViewProj = worldMatrix * viewMatrix*projMatrix;
-	XMStoreFloat4x4(&constData.world_view_proj_matrix, worldViewProj);
+	XMStoreFloat4x4(&constData.world_view_proj_matrix, XMMatrixTranspose(worldViewProj));
 
-	auto* constBufferDestination = constBufferMappedData + currentBackBuffer * 255;
+	auto* constBufferDestination = constBufferMappedData;
 	memcpy(constBufferDestination, &constData, sizeof(constData));
 }
 
@@ -530,29 +537,43 @@ bool App3::App3Main::Render()
 	DX::ThrowIfFailed(cmdAllocator->Reset());
 
 	DX::ThrowIfFailed(cmdList->Reset(cmdAllocator.Get(), pso.Get()));
-
+	
 	cmdList->SetGraphicsRootSignature(rootSignature.Get());
+
 
 	ID3D12DescriptorHeap* cbvDescriptorHeaps[] = { cbvDescriptorHeap.Get() };
 	cmdList->SetDescriptorHeaps(_countof(cbvDescriptorHeaps), cbvDescriptorHeaps);
 
+
 	cmdList->SetGraphicsRootDescriptorTable(0, CurrentCBVGPUHandle());
+
 
 	cmdList->RSSetViewports(1, &screenViewport);
 	cmdList->RSSetScissorRects(1, &scissorRect);
+
+
 
 	cmdList->ResourceBarrier(
 		1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET)
 	);
 
+
+
 	cmdList->ClearRenderTargetView(CurrentBackBufferView(), Colors::White, 0, nullptr);
-	cmdList->ClearDepthStencilView(dsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
+	cmdList->ClearDepthStencilView(dsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 
 	cmdList->OMSetRenderTargets(1, &CurrentBackBufferView(), false, &dsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
 
-	cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+
+
+
+
 	cmdList->IASetVertexBuffers(0, 1, &vertexBufferView);
 	cmdList->IASetIndexBuffer(&indexBufferView);
+	cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+
 	cmdList->DrawIndexedInstanced(boxIndexCount, 1, 0, 0, 0);
 
 	cmdList->ResourceBarrier(
@@ -560,16 +581,25 @@ bool App3::App3Main::Render()
 	);
 
 	DX::ThrowIfFailed(cmdList->Close());
-
 	ID3D12CommandList* cmdLists[] = { cmdList.Get() };
 	cmdQueue->ExecuteCommandLists(_countof(cmdLists), cmdLists);
 
 
-	WaitForGPU();
+	DX::ThrowIfFailed(deviceSwapChain->Present(1, 0));
 
-	DX::ThrowIfFailed(deviceSwapChain->Present(0, 0));
+	DX::ThrowIfFailed(cmdQueue->Signal(fence.Get(), fenceValue));
 
-	currentBackBuffer = (currentBackBuffer + 1) % NMR_SWAP_BUFFERS;
+	currentBackBuffer = deviceSwapChain->GetCurrentBackBufferIndex();
+
+	if (fence->GetCompletedValue() < fenceValue)
+	{
+		DX::ThrowIfFailed(fence->SetEventOnCompletion(fenceValue, fenceEvent));
+		WaitForSingleObjectEx(fenceEvent, INFINITE, FALSE);
+	}
+
+	++fenceValue;
+
+
 	return true;
 }
 
@@ -582,6 +612,28 @@ void App3Main::WaitForGPU()
 	WaitForSingleObjectEx(fenceEvent, INFINITE, false);
 
 	++fenceValue;
+
+	/*
+	// Advance the fence value to mark commands up to this fence point.
+	fenceValue++;
+
+	// Add an instruction to the command queue to set a new fence point.  Because we 
+	// are on the GPU timeline, the new fence point won't be set until the GPU finishes
+	// processing all the commands prior to this Signal().
+	DX::ThrowIfFailed(cmdQueue->Signal(fence.Get(), fenceValue));
+
+	// Wait until the GPU has completed commands up to this fence point.
+	if (fence->GetCompletedValue() < fenceValue)
+	{
+		HANDLE eventHandle = CreateEventEx(nullptr, false, false, EVENT_ALL_ACCESS);
+
+		// Fire event when GPU hits current fence.  
+		DX::ThrowIfFailed(fence->SetEventOnCompletion(fenceValue, eventHandle));
+
+		// Wait until the GPU hits current fence event is fired.
+		WaitForSingleObject(eventHandle, INFINITE);
+		CloseHandle(eventHandle);
+	}*/
 }
 
 
