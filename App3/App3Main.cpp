@@ -17,7 +17,6 @@ using namespace Concurrency;
 
 App3Main::App3Main()
 {
-
 }
 App3Main::~App3Main()
 {
