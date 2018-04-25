@@ -35,6 +35,7 @@ bool App3Main::Initialize(Windows::UI::Core::CoreWindow^ outWindow)
 	InitializeCmdQueue();
 	InitializeDescriptorHeaps();
 	InitializeSwapChain();
+
 	CreateFrameResources();
 	BuildRootSignature();
 	CompileShaders();
@@ -75,7 +76,7 @@ void App3Main::CreateFrameResources()
 	auto rtvDescriptorHeapHandle = rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
 	for (int i = 0; i < NMR_SWAP_BUFFERS; ++i)
 	{
-		deviceSwapChain->GetBuffer(i, IID_PPV_ARGS(swapChainBuffers[i].GetAddressOf()));
+		deviceSwapChain->GetBuffer(i, IID_PPV_ARGS(&swapChainBuffers[i]));
 		device->CreateRenderTargetView(swapChainBuffers[i].Get(), nullptr, rtvDescriptorHeapHandle);
 		rtvDescriptorHeapHandle.ptr += rtvDescriptorHandleIncrementSize;
 	}
@@ -83,17 +84,25 @@ void App3Main::CreateFrameResources()
 	D3D12_RESOURCE_DESC depthResourceDesc = CD3DX12_RESOURCE_DESC::Tex2D(depthStencilFormat, window->Bounds.Width, window->Bounds.Height, 1, 1);
 	depthResourceDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
 
+
 	CD3DX12_CLEAR_VALUE depthOptimizedClearValue(depthStencilFormat, 1.0f, 0);
 
-	DX::ThrowIfFailed(device->CreateCommittedResource(&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT), D3D12_HEAP_FLAG_NONE, &depthResourceDesc, D3D12_RESOURCE_STATE_DEPTH_WRITE, &depthOptimizedClearValue, IID_PPV_ARGS(depthStencilBuffer.GetAddressOf())));
+	DX::ThrowIfFailed(device->CreateCommittedResource(
+		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+		D3D12_HEAP_FLAG_NONE, 
+		&depthResourceDesc, 
+		D3D12_RESOURCE_STATE_DEPTH_WRITE, 
+		&depthOptimizedClearValue, 
+		IID_PPV_ARGS(&depthStencilBuffer)));
 
 	DX::SetName(depthStencilBuffer.Get(), L"DepthStencilBuffer");
-
 
 	D3D12_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc = {};
 	depthStencilViewDesc.Flags = D3D12_DSV_FLAG_NONE;
 	depthStencilViewDesc.Format = depthStencilFormat;
 	depthStencilViewDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+	depthStencilViewDesc.Texture2D.MipSlice = 0;
+
 	device->CreateDepthStencilView(depthStencilBuffer.Get(), &depthStencilViewDesc, dsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
 
 	//cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(depthStencilBuffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_DEPTH_WRITE));
@@ -132,7 +141,6 @@ void App3Main::CreateFrameResources()
 		IID_PPV_ARGS(&vertexBuffer)
 	));
 
-
 	DX::SetName(vertexBuffer.Get(), L"VertexBuffer");
 
 	DX::ThrowIfFailed(device->CreateCommittedResource(
@@ -148,7 +156,7 @@ void App3Main::CreateFrameResources()
 
 
 	D3D12_SUBRESOURCE_DATA vertexData = {};
-	vertexData.pData = reinterpret_cast<BYTE*>(&cubeVertices);
+	vertexData.pData = reinterpret_cast<BYTE*>(cubeVertices);
 	vertexData.RowPitch = vertexBufferSize;
 	vertexData.SlicePitch = vertexData.RowPitch;
 
@@ -161,11 +169,12 @@ void App3Main::CreateFrameResources()
 	vertexBufferView.StrideInBytes = sizeof(VertexData);
 
 	
-	uint cubeIndices[] =
+	uint16_t cubeIndices[] =
 	{
+		// front face
 		0, 1, 2,
 		0, 2, 3,
-		
+
 		// back face
 		4, 6, 5,
 		4, 7, 6,
@@ -231,6 +240,11 @@ void App3Main::CreateFrameResources()
 		indexBufferUpload.Get(), 
 		0, 0, 1, &indexBufferSubresourceData));
 
+
+	CD3DX12_RESOURCE_BARRIER indexBufferResourceBarrier =
+		CD3DX12_RESOURCE_BARRIER::Transition(indexBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDEX_BUFFER);
+	cmdList->ResourceBarrier(1, &indexBufferResourceBarrier);
+
 	indexBufferView.BufferLocation = indexBuffer->GetGPUVirtualAddress();
 	indexBufferView.SizeInBytes = indexBufferSize;
 	indexBufferView.Format = DXGI_FORMAT_R16_UINT;
@@ -289,6 +303,10 @@ void App3Main::InitializeDevice()
 	dsvDescriptorHandleIncrementSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 	cbvDescriptorHandleIncrementSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
+	DX::ThrowIfFailed(device->CreateFence(fenceValue, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence)));
+
+	fenceEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
+
 	D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS multisampleData = {};
 	multisampleData.Format = bufferFormat;
 	multisampleData.SampleCount = 4;
@@ -327,12 +345,8 @@ void App3Main::InitializeDescriptorHeaps()
 	cbvDescriptorHeapDesc.NumDescriptors = NMR_SWAP_BUFFERS; // frame's cbv = cube_cbv(world matrix) + const_cbv (viewProjMatrix + Game Time)
 	DX::ThrowIfFailed(device->CreateDescriptorHeap(&cbvDescriptorHeapDesc, IID_PPV_ARGS(&cbvDescriptorHeap)));
 
-	DX::ThrowIfFailed(device->CreateFence(fenceValue, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence)));
-	++fenceValue;
 
-	fenceEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
-
-	WaitForGPU();
+	
 }
 
 void App3Main::InitializeCmdQueue()
@@ -371,6 +385,8 @@ void App3::App3Main::InitializeSwapChain()
 	swapChainDesc.BufferCount = NMR_SWAP_BUFFERS;
 	swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
 	swapChainDesc.Flags = 0;
+	swapChainDesc.AlphaMode = DXGI_ALPHA_MODE_IGNORE;
+
 
 	DX::ThrowIfFailed(dxgiFactory->CreateSwapChainForCoreWindow(
 		cmdQueue.Get(),
@@ -405,11 +421,15 @@ void App3Main::BuildRootSignature()
 		D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS;
 
 	CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc;
-	rootSignatureDesc.Init(1, parameters.begin(), 0, nullptr, rootSignatureFlags);
+	rootSignatureDesc.Init(1, parameters.begin(), 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
-	ComPtr<ID3DBlob> rootSignatureBlob;
-	ComPtr<ID3DBlob> rootSignatureBlobError;
+	ComPtr<ID3DBlob> rootSignatureBlob = nullptr;
+	ComPtr<ID3DBlob> rootSignatureBlobError = nullptr;
 	DX::ThrowIfFailed(D3D12SerializeRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &rootSignatureBlob, &rootSignatureBlobError));
+	if (rootSignatureBlobError != nullptr)
+	{
+	}
+	
 	DX::ThrowIfFailed(device->CreateRootSignature(0, rootSignatureBlob->GetBufferPointer(), rootSignatureBlob->GetBufferSize(), IID_PPV_ARGS(&rootSignature)));
 }
 
@@ -471,8 +491,7 @@ void App3::App3Main::MouseMoved(const float dx, const float dy) noexcept
 
 
 void App3::App3Main::UpdateConstBuffers()
-{
-	
+{	
 	ConstData constData;
 
 	// Update the view matrix
@@ -487,20 +506,20 @@ void App3::App3Main::UpdateConstBuffers()
 
 	const auto viewMatrix = XMMatrixLookAtLH(XMLoadFloat4(&cameraPosition), XMLoadFloat4(&cameraFocus), XMLoadFloat4(&upDirecation));
 
-	XMStoreFloat4x4(&constData.view_matrix, viewMatrix);
+	//XMStoreFloat4x4(&constData.view_matrix, viewMatrix);
 	
 	// Update the perspective matrix
 	const auto width = window->Bounds.Width;
 	const auto height = window->Bounds.Height;
 
-	const auto projMatrix = XMMatrixPerspectiveFovLH(XM_PI / 4.0f, window->Bounds.Width / window->Bounds.Height, 0.01, 100.0f);
-	XMStoreFloat4x4(&constData.proj_matrix, projMatrix);
+	const auto projMatrix = XMMatrixPerspectiveFovLH(XM_PI / 4.0f, window->Bounds.Width / window->Bounds.Height, 1.0, 1000.0f);
+	//XMStoreFloat4x4(&constData.proj_matrix, projMatrix);
 
 	const auto viewProjMatrix = viewMatrix * projMatrix;
-	XMStoreFloat4x4(&constData.view_proj_matrix, viewProjMatrix);
+	//XMStoreFloat4x4(&constData.view_proj_matrix, viewProjMatrix);
 
-	const auto worldMatrix = XMMatrixScaling(1.0f, 1.0f, 1.0f);
-	const auto worldViewProj = worldMatrix * viewProjMatrix;
+	const auto worldMatrix = XMMatrixScaling(1, 1, 1);
+	const auto worldViewProj = worldMatrix * viewMatrix*projMatrix;
 	XMStoreFloat4x4(&constData.world_view_proj_matrix, worldViewProj);
 
 	auto* constBufferDestination = constBufferMappedData + currentBackBuffer * 255;
@@ -524,8 +543,7 @@ bool App3::App3Main::Render()
 	cmdList->RSSetScissorRects(1, &scissorRect);
 
 	cmdList->ResourceBarrier(
-		1,
-		&CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET)
+		1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET)
 	);
 
 	cmdList->ClearRenderTargetView(CurrentBackBufferView(), Colors::White, 0, nullptr);
@@ -553,8 +571,6 @@ bool App3::App3Main::Render()
 	DX::ThrowIfFailed(deviceSwapChain->Present(0, 0));
 
 	currentBackBuffer = (currentBackBuffer + 1) % NMR_SWAP_BUFFERS;
-	WaitForGPU();
-
 	return true;
 }
 

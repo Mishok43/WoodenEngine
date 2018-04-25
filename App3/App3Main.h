@@ -67,7 +67,7 @@ namespace App3
 
 		float cameraTheta = DirectX::XM_PI/3.0f;
 		float cameraPhi = DirectX::XM_PI/2.0f;
-		float cameraRadius = 100.0f;
+		float cameraRadius = 5.0f;
 
 		int boxIndexCount;
 
