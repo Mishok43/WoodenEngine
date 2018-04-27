@@ -12,9 +12,28 @@ namespace DirectXEngine
 		UpdateWorldMatrix();
 	}
 
+
 	BObject::~BObject()
 	{
 	
+	}
+
+	void BObject::SetPosition(const XMFLOAT3& Position)
+	{
+		this->Position = Position;
+		UpdateWorldMatrix();
+	}
+
+	void BObject::SetRotation(const XMFLOAT3& Rotation)
+	{
+		this->Rotation = Rotation;
+		UpdateWorldMatrix();
+	}
+
+	void BObject::SetScale(const XMFLOAT3& Scale)
+	{
+		this->Scale = Scale;
+		UpdateWorldMatrix();
 	}
 
 	void BObject::UpdateWorldMatrix() 

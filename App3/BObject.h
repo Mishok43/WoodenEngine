@@ -35,23 +35,22 @@ namespace DirectXEngine
 			
 			/** @brief Set absolute world position
 			  * @param Position An absolute world position (const XMFLOAT3 &)
-			  * @param m (const uint16)
 			  * @return (void)
 			  */
-			virtual void SetPosition(const XMFLOAT3& Position, const uint16 m) = 0;
+			virtual void SetPosition(const XMFLOAT3& Position);
 			
 			/** @brief Set absolute world rotation
 			  * @param Rotation An absolute world rotation(const XMFLOAT3 &)
 			  * @return (void)
 			  */
-			virtual void SetRotation(const XMFLOAT3& Rotation) = 0;
+			virtual void SetRotation(const XMFLOAT3& Rotation);
 
 
 			/** @brief Set absolute world scale
 			  * @param Scale An absolute world scale(const XMFLOAT3 &)
 			  * @return (void)
 			  */
-			virtual void SetScale(const XMFLOAT3& Scale) = 0;
+			virtual void SetScale(const XMFLOAT3& Scale);
 		
 		private:	
 			/// Absolute matrix of transformation in the world. Used for rendering
