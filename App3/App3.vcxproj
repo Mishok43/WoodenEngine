@@ -196,7 +196,9 @@
     <ClInclude Include="Common\d3dx12.h" />
     <ClInclude Include="App3Main.h" />
     <ClInclude Include="Common\DirectXHelper.h" />
+    <ClInclude Include="MathHelper.h" />
     <ClInclude Include="pch.h" />
+    <ClInclude Include="RenderObject.h" />
     <ClInclude Include="ShaderStructures.h" />
   </ItemGroup>
   <ItemGroup>
@@ -210,6 +212,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="RenderObject.cpp" />
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest">

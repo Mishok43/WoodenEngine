@@ -43,12 +43,15 @@
     <ClCompile Include="App.cpp" />
     <ClCompile Include="App3Main.cpp" />
     <ClCompile Include="pch.cpp" />
+    <ClCompile Include="RenderObject.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="App.h" />
     <ClInclude Include="App3Main.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="ShaderStructures.h" />
+    <ClInclude Include="MathHelper.h" />
+    <ClInclude Include="RenderObject.h" />
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest" />

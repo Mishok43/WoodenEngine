@@ -1,27 +1,29 @@
 #pragma once
 #include "pch.h"
 
-namespace App3
+namespace DirectXEngine
 {
 
 	using namespace DirectX;
 
-	struct ConstData
+	struct SConstData
 	{
-		XMFLOAT4X4 view_matrix;
-		XMFLOAT4X4 proj_matrix;
-		XMFLOAT4X4 view_proj_matrix;
-		XMFLOAT4X4 world_view_proj_matrix; // 64B
+		XMFLOAT4X4 ViewMatrix;
+		XMFLOAT4X4 ProjMatrix;
+		XMFLOAT4X4 ViewProjMatrix;
+
+		float GameTime;
 	}; // 256B-256B=56B
 
-	struct DataPerObject
+	struct SObjectData
 	{
-		XMFLOAT4X4 world_matrix; // 64B
+		XMFLOAT4X4 WorldMatrix; // 64B
+		float Time;
 	};
 
-	struct VertexData
+	struct SVertexData
 	{
-		XMFLOAT3 position;
-		XMFLOAT4 color;
+		XMFLOAT3 Position;
+		XMFLOAT4 Color;
 	};
 }

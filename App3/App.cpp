@@ -3,7 +3,7 @@
 
 #include <ppltasks.h>
 
-using namespace App3;
+using namespace DirectXEngine;
 
 using namespace concurrency;
 using namespace Windows::ApplicationModel;
@@ -204,7 +204,7 @@ void App::OnDisplayContentsInvalidated(DisplayInformation^ sender, Object^ args)
 {
 }
 
-void App3::App::OnMouseMoved(Windows::Devices::Input::MouseDevice ^ mouseDevice, Windows::Devices::Input::MouseEventArgs ^ args)
+void DirectXEngine::App::OnMouseMoved(Windows::Devices::Input::MouseDevice ^ mouseDevice, Windows::Devices::Input::MouseEventArgs ^ args)
 {
 	if (!m_trackingPointer)
 	{
@@ -217,12 +217,12 @@ void App3::App::OnMouseMoved(Windows::Devices::Input::MouseDevice ^ mouseDevice,
 	m_main->MouseMoved(dx, dy);
 }
 
-void App3::App::OnPointerPressed(Windows::UI::Core::CoreWindow ^ coreWindow, Windows::UI::Core::PointerEventArgs ^ pointerEventArgs)
+void DirectXEngine::App::OnPointerPressed(Windows::UI::Core::CoreWindow ^ coreWindow, Windows::UI::Core::PointerEventArgs ^ pointerEventArgs)
 {
 	m_trackingPointer = true;
 }
 
-void App3::App::OnPointerReleased(Windows::UI::Core::CoreWindow ^ coreWindow, Windows::UI::Core::PointerEventArgs ^ pointerEventArgs)
+void DirectXEngine::App::OnPointerReleased(Windows::UI::Core::CoreWindow ^ coreWindow, Windows::UI::Core::PointerEventArgs ^ pointerEventArgs)
 {
 	m_trackingPointer = false;
 }

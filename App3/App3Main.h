@@ -4,7 +4,7 @@
 #include "pch.h"
 
 // Renders Direct3D content on the screen.
-namespace App3
+namespace DirectXEngine
 {
 	// number frame buffers for swap chain
 	static const UINT NMR_SWAP_BUFFERS = 2;

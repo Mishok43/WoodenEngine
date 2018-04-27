@@ -18,5 +18,4 @@
 #endif
 
 
-using uint = unsigned int;
 using Microsoft::WRL::ComPtr;

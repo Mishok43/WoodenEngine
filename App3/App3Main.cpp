@@ -8,7 +8,7 @@
 
 #define _DEBUG
 
-using namespace App3;
+using namespace DirectXEngine;
 using namespace Windows::Foundation;
 using namespace Windows::System::Threading;
 using namespace Concurrency;
@@ -51,25 +51,20 @@ bool App3Main::Initialize(Windows::UI::Core::CoreWindow^ outWindow)
 }
 
 
-ID3D12Resource* App3::App3Main::CurrentBackBuffer() const 
+ID3D12Resource* DirectXEngine::App3Main::CurrentBackBuffer() const 
 {
 
 	return swapChainBuffers[currentBackBuffer].Get();
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE App3::App3Main::CurrentBackBufferView() const
+D3D12_CPU_DESCRIPTOR_HANDLE DirectXEngine::App3Main::CurrentBackBufferView() const
 {
-	return DX::CD3DX12_CPU_DESCRIPTOR_HANDLE(
-		rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
-		currentBackBuffer,
-		rtvDescriptorHandleIncrementSize);
-/*
 	auto curBackBufferCPUHandle = rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
 	curBackBufferCPUHandle.ptr += currentBackBuffer * rtvDescriptorHandleIncrementSize;
-	return curBackBufferCPUHandle;*/
+	return curBackBufferCPUHandle;
 }
 
-D3D12_GPU_DESCRIPTOR_HANDLE App3::App3Main::CurrentCBVGPUHandle() const 
+D3D12_GPU_DESCRIPTOR_HANDLE DirectXEngine::App3Main::CurrentCBVGPUHandle() const 
 {
 	auto currentCBVDescriptorHeapGPUHandle = cbvDescriptorHeap->GetGPUDescriptorHandleForHeapStart();
 	currentCBVDescriptorHeapGPUHandle.ptr += 0* cbvDescriptorHandleIncrementSize;
@@ -257,7 +252,7 @@ void App3Main::CreateFrameResources()
 
 	const auto constBufferFrameSize = 256;
 
-	auto constBufferDesc = CD3DX12_RESOURCE_DESC::Buffer(NMR_SWAP_BUFFERS);
+	auto constBufferDesc = CD3DX12_RESOURCE_DESC::Buffer(constBufferFrameSize*NMR_SWAP_BUFFERS);
 	DX::ThrowIfFailed(device->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
 		D3D12_HEAP_FLAG_NONE,
@@ -272,7 +267,7 @@ void App3Main::CreateFrameResources()
 
 	auto cbvDescriptorHeapCPUHandle = cbvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
 	auto constBufferGPUAddress = constBuffer->GetGPUVirtualAddress();
-	for (int i = 0; i < 1; ++i)
+	for (int i = 0; i < NMR_SWAP_BUFFERS; ++i)
 	{
 		D3D12_CONSTANT_BUFFER_VIEW_DESC cbvViewDesc;
 		cbvViewDesc.SizeInBytes = constBufferFrameSize;
@@ -369,7 +364,7 @@ void App3Main::InitializeCmdQueue()
 
 }
 
-void App3::App3Main::InitializeSwapChain()
+void DirectXEngine::App3Main::InitializeSwapChain()
 {
 	IDXGIFactory4* dxgiFactory = nullptr;
 	DX::ThrowIfFailed(CreateDXGIFactory1(IID_PPV_ARGS(&dxgiFactory)));
@@ -439,7 +434,7 @@ void App3Main::BuildRootSignature()
 	DX::ThrowIfFailed(device->CreateRootSignature(0, rootSignatureBlob->GetBufferPointer(), rootSignatureBlob->GetBufferSize(), IID_PPV_ARGS(&rootSignature)));
 }
 
-void App3::App3Main::Rotate()
+void DirectXEngine::App3Main::Rotate()
 {
 	cameraPhi += DirectX::XM_PI / 10000.0;
 }
@@ -477,14 +472,14 @@ void App3Main::BuildPipelineStateObject()
 	DX::ThrowIfFailed(device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&pso)));
 }
 
-void App3::App3Main::Update()
+void DirectXEngine::App3Main::Update()
 {
 
 	UpdateConstBuffers();
 	WaitForGPU();
 }
 
-void App3::App3Main::MouseMoved(const float dx, const float dy) noexcept
+void DirectXEngine::App3Main::MouseMoved(const float dx, const float dy) noexcept
 {
 	const auto dPhi = dx / window->Bounds.Width*DirectX::XM_PI;
 	const auto dTheta = dy / window->Bounds.Height*DirectX::XM_PIDIV2;
@@ -496,7 +491,7 @@ void App3::App3Main::MouseMoved(const float dx, const float dy) noexcept
 }
 
 
-void App3::App3Main::UpdateConstBuffers()
+void DirectXEngine::App3Main::UpdateConstBuffers()
 {
 	ConstData constData;
 
@@ -528,11 +523,11 @@ void App3::App3Main::UpdateConstBuffers()
 	const auto worldViewProj = worldMatrix * viewMatrix*projMatrix;
 	XMStoreFloat4x4(&constData.world_view_proj_matrix, XMMatrixTranspose(worldViewProj));
 
-	auto* constBufferDestination = constBufferMappedData;
+	auto* constBufferDestination = constBufferMappedData + currentBackBuffer*256;
 	memcpy(constBufferDestination, &constData, sizeof(constData));
 }
 
-bool App3::App3Main::Render()
+bool DirectXEngine::App3Main::Render()
 {
 	DX::ThrowIfFailed(cmdAllocator->Reset());
 
@@ -587,17 +582,9 @@ bool App3::App3Main::Render()
 
 	DX::ThrowIfFailed(deviceSwapChain->Present(1, 0));
 
-	DX::ThrowIfFailed(cmdQueue->Signal(fence.Get(), fenceValue));
-
-	currentBackBuffer = deviceSwapChain->GetCurrentBackBufferIndex();
-
-	if (fence->GetCompletedValue() < fenceValue)
-	{
-		DX::ThrowIfFailed(fence->SetEventOnCompletion(fenceValue, fenceEvent));
-		WaitForSingleObjectEx(fenceEvent, INFINITE, FALSE);
-	}
-
-	++fenceValue;
+	currentBackBuffer = (currentBackBuffer + 1) % NMR_SWAP_BUFFERS;
+	
+	WaitForGPU();
 
 
 	return true;
