@@ -16,6 +16,119 @@ namespace DX
 		}
 	}
 
+
+	template<typename T>
+	class FUploadBuffer
+	{
+	public:
+		FUploadBuffer() = delete;
+
+		FUploadBuffer(
+			ComPtr<ID3D12Device> Device,
+			const uint64 NumberElements,
+			const bool IsConstBuffer
+		): NumberElements(NumberElements), bIsConstantBuffer(IsConstBuffer)
+		{
+			assert(Device != nullptr);
+
+			// Size of const buffer must be divided by 256 
+			ElementByteSize = (bIsConstantBuffer) ?
+				(sizeof(T) + 255)*(~255) : sizeof(T);
+			ByteSize = ElementByteSize * NumberElements;
+
+			DX::ThrowIfFailed(Device->CreateCommittedResource(
+				CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+				D3D12_HEAP_FLAG_NONE,
+				CD3DX12_RESOURCE_DESC::Buffer(ByteSize),
+				D3D12_RESOURCE_STATE_GENERIC_READ,
+				nullptr,
+				IID_PPV_ARGS(&Buffer);
+			));
+
+			DX::ThrowIfFailed(Buffer->Map(0, nullptr, &MappedData));
+		}
+
+		~FUploadBuffer()
+		{
+		}
+
+		FUploadBuffer(const FUploadBuffer& UploadBuffer) = delete;
+		FUploadBuffer(FUploadBuffer&& UploadBuffer) = delete;
+		FUploadBuffer& FUploadBuffer(const FUploadBuffer& UploadBuffer) = delete;
+
+		ID3D12Resource* Resource() const
+		{
+			return Buffer;
+		}
+
+		void CopyData(const uint16 ElementIndex, const T& ElementData)
+		{
+			memcpy(MappedData[ElementIndex*ElementByteSize], &ElementData, sizeof(ElementByteSize));
+		}
+
+		void UnmapData()
+		{
+			DX::ThrowIfFailed(Buffer->Unmap(0, nullptr));
+		}
+
+	private:
+		Byte* MappedData;
+
+		ComPtr<ID3D12Resource> Buffer;
+		uint64 ByteSize;
+		uint64 ElementByteSize;
+
+		uint64 NumberElements;
+
+		bool bIsConstantBuffer;
+	};
+
+
+	inline ComPtr<ID3D12Resource> CreateBuffer(
+		ComPtr<ID3D12Device> Device,
+		ComPtr<ID3D12GraphicsCommandList> CmdList,
+		const uint64 ByteSize,
+		const void* const InitData
+	)
+	{
+		ComPtr<ID3D12Resource> Buffer;
+
+		CD3DX12_RESOURCE_DESC BufferDesc = CD3DX12_RESOURCE_DESC::Buffer(ByteSize);
+
+		DX::ThrowIfFailed(Device->CreateCommittedResource(
+			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+			D3D12_HEAP_FLAG_NONE,
+			&BufferDesc,
+			D3D12_RESOURCE_STATE_COPY_DEST,
+			nullptr,
+			IID_PPV_ARGS(&Buffer)
+		));
+
+		ComPtr<ID3D12Resource> UploadBuffer;
+
+		DX::ThrowIfFailed(Device->CreateCommittedResource(
+			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+			D3D12_HEAP_FLAG_NONE,
+			&BufferDesc,
+			D3D12_RESOURCE_STATE_GENERIC_READ,
+			nullptr,
+			IID_PPV_ARGS(&UploadBuffer)
+		));
+
+		D3D12_SUBRESOURCE_DATA SubresourceBufferData = {};
+		SubresourceBufferData.pData = InitData;
+		SubresourceBufferData.RowPitch = ByteSize;
+		SubresourceBufferData.SlicePitch = SubresourceBufferData.RowPitch;
+
+		DX::ThrowIfFailed(UpdateSubresources(
+			CmdList.Get(), Buffer.Get(), UploadBuffer.Get(), 
+			0, 0, 1, &SubresourceBufferData));
+
+		return Buffer;
+	}
+
+
+
 	// Function that reads from a binary file asynchronously.
 	inline Concurrency::task<std::vector<byte>> ReadDataAsync(const std::wstring& filename)
 	{

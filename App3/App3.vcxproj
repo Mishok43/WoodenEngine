@@ -37,7 +37,7 @@
     <WindowsTargetPlatformVersion>10.0.16299.0</WindowsTargetPlatformVersion>
     <WindowsTargetPlatformMinVersion>10.0.10586.0</WindowsTargetPlatformMinVersion>
     <ApplicationTypeRevision>10.0</ApplicationTypeRevision>
-    <ProjectName>DirectXEngine</ProjectName>
+    <ProjectName>WoodenEngine</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -196,14 +196,20 @@
     <ClInclude Include="Common\d3dx12.h" />
     <ClInclude Include="App3Main.h" />
     <ClInclude Include="Common\DirectXHelper.h" />
+    <ClInclude Include="FrameResource.h" />
+    <ClInclude Include="GameResources.h" />
     <ClInclude Include="MathHelper.h" />
+    <ClInclude Include="MeshData.h" />
     <ClInclude Include="pch.h" />
-    <ClInclude Include="RenderObject.h" />
+    <ClInclude Include="Object.h" />
     <ClInclude Include="ShaderStructures.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="App.cpp" />
     <ClCompile Include="App3Main.cpp" />
+    <ClCompile Include="FrameResource.cpp" />
+    <ClCompile Include="GameResources.cpp" />
+    <ClCompile Include="MeshData.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
@@ -212,7 +218,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="RenderObject.cpp" />
+    <ClCompile Include="Object.cpp" />
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest">

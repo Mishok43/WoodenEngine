@@ -1,24 +1,24 @@
 #include "MeshData.h"
 
-namespace DirectXEngine
+namespace WoodenEngine
 {
-	MeshGenerator::MeshGenerator()
+	FMeshGenerator::FMeshGenerator()
 	{
 
 	}
 
-	MeshGenerator::~MeshGenerator()
+	FMeshGenerator::~FMeshGenerator()
 	{
 
 	}
 
-	MeshData MeshGenerator::CreateBox(
+	FMeshData FMeshGenerator::CreateBox(
 		float Width, 
 		float Height, 
 		float Depth
 	) const noexcept
 	{
-		MeshData BoxMeshData;
+		FMeshData BoxMeshData;
 		
 		const auto WidthHalf = Width / 2.0f;
 		const auto HeightHalf = Height / 2.0f;
@@ -56,14 +56,70 @@ namespace DirectXEngine
 		return BoxMeshData;
 	}
 
-	MeshData MeshGenerator::CreateSphere(
+	FMeshData FMeshGenerator::CreateSphere(
 		float Radius,
 		float NumVSubdivisions,
 		float NumHSubdivisions) const noexcept
 	{
-		for (int i = 0; i < NumVSubdivisions+1; i++)
-		{
+		FMeshData SphereMeshData;
+		SphereMeshData.Vertices.resize((NumVSubdivisions+1)*(NumHSubdivisions));
+		SphereMeshData.Indices.resize(NumVSubdivisions*NumHSubdivisions * 2 * 3);
+		const auto TopVertexY = Radius;
+		const auto BottomVertexY = -Radius;
+		const auto VAngleOffset = DirectX::XM_PI / NumVSubdivisions;
+		const auto HAngleOffset = DirectX::XM_2PI / NumHSubdivisions;
 
+		
+		uint16 iVertex = 0;
+		
+		// Add top vertices
+		for (auto iHSubdivision = 0; iHSubdivision < NumHSubdivisions; iHSubdivision++, iVertex++)
+		{
+			SphereMeshData.Vertices[iVertex] = { 0.0f, TopVertexY, 0.0f };
 		}
+
+		// Add intermediate vertices
+		for (auto iVSubdivision = 0; iVSubdivision < NumVSubdivisions-1; ++iVSubdivision)
+		{
+			const auto VAngle = DirectX::XM_PIDIV2 - (iVSubdivision + 1)*VAngleOffset;
+			const auto SubCircleRadius = cos(VAngle)*Radius;
+			const auto VertexY = sin(VAngle)*Radius;
+
+			for (auto iHSubdivision = 0; iHSubdivision < NumHSubdivisions; ++iHSubdivision, ++iVertex)
+			{
+				const auto HAngle = (iHSubdivision + 1)*HAngleOffset;
+				const auto VertexX = cos(HAngle)*SubCircleRadius;
+				const auto VertexZ = sin(HAngle)*SubCircleRadius;
+				SphereMeshData.Vertices[iVertex] = { VertexX, VertexY, VertexZ };
+			}
+		}
+
+		// Add bottom vertices
+		for (auto iHSubdivision = 0; iHSubdivision < NumHSubdivisions; iHSubdivision++, iVertex++)
+		{
+			SphereMeshData.Vertices[iVertex] = { 0.0f, BottomVertexY, 0.0f };
+		}
+
+		// Add indices
+		uint16 VertexIndex = 0;
+		for (auto iVSubdivision = 1; iVSubdivision < NumVSubdivisions+1; ++iVSubdivision)
+		{
+			for (auto iHSubdivision = 0; iHSubdivision < NumHSubdivisions-1; ++iHSubdivision, ++VertexIndex)
+			{
+				const auto TopLeftVIndex = (iVSubdivision - 1)*NumHSubdivisions +iHSubdivision;
+				const auto TopRightVIndex = TopLeftVIndex+1;
+				const auto DownLeftVIndex = iVSubdivision * NumHSubdivisions + iHSubdivision;
+				const auto DownRightVIndex = DownLeftVIndex + 1;
+				SphereMeshData.Indices[VertexIndex] = DownLeftVIndex;
+				SphereMeshData.Indices[VertexIndex+1] = TopLeftVIndex;
+				SphereMeshData.Indices[VertexIndex+2] = TopRightVIndex;
+
+				SphereMeshData.Indices[VertexIndex+3] = DownLeftVIndex;
+				SphereMeshData.Indices[VertexIndex+4] = TopRightVIndex;
+				SphereMeshData.Indices[VertexIndex+5] = DownRightVIndex;
+			}
+		}
+
+		return SphereMeshData;
 	}
 }

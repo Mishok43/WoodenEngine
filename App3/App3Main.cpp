@@ -8,7 +8,7 @@
 
 #define _DEBUG
 
-using namespace DirectXEngine;
+using namespace WoodenEngine;
 using namespace Windows::Foundation;
 using namespace Windows::System::Threading;
 using namespace Concurrency;
@@ -51,20 +51,20 @@ bool App3Main::Initialize(Windows::UI::Core::CoreWindow^ outWindow)
 }
 
 
-ID3D12Resource* DirectXEngine::App3Main::CurrentBackBuffer() const 
+ID3D12Resource* WoodenEngine::App3Main::CurrentBackBuffer() const 
 {
 
 	return swapChainBuffers[currentBackBuffer].Get();
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE DirectXEngine::App3Main::CurrentBackBufferView() const
+D3D12_CPU_DESCRIPTOR_HANDLE WoodenEngine::App3Main::CurrentBackBufferView() const
 {
 	auto curBackBufferCPUHandle = rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
 	curBackBufferCPUHandle.ptr += currentBackBuffer * rtvDescriptorHandleIncrementSize;
 	return curBackBufferCPUHandle;
 }
 
-D3D12_GPU_DESCRIPTOR_HANDLE DirectXEngine::App3Main::CurrentCBVGPUHandle() const 
+D3D12_GPU_DESCRIPTOR_HANDLE WoodenEngine::App3Main::CurrentCBVGPUHandle() const 
 {
 	auto currentCBVDescriptorHeapGPUHandle = cbvDescriptorHeap->GetGPUDescriptorHandleForHeapStart();
 	currentCBVDescriptorHeapGPUHandle.ptr += 0* cbvDescriptorHandleIncrementSize;
@@ -117,7 +117,7 @@ void App3Main::CreateFrameResources()
 
 	scissorRect = { 0, 0, static_cast<long>(screenViewport.Width), static_cast<long>(screenViewport.Height) };
 	
-	VertexData cubeVertices[] = {
+	SVertexData cubeVertices[] = {
 		{ XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT4(Colors::Red) },
 		{ XMFLOAT3(-1.0f, +1.0f, -1.0f), XMFLOAT4(Colors::Green) },
 		{ XMFLOAT3(+1.0f, +1.0f, -1.0f), XMFLOAT4(Colors::Blue) },
@@ -167,7 +167,7 @@ void App3Main::CreateFrameResources()
 	
 	vertexBufferView.BufferLocation = vertexBufferUpload->GetGPUVirtualAddress();
 	vertexBufferView.SizeInBytes = vertexBufferSize;
-	vertexBufferView.StrideInBytes = sizeof(VertexData);
+	vertexBufferView.StrideInBytes = sizeof(SVertexData);
 
 	
 	uint16_t cubeIndices[] =
@@ -364,7 +364,7 @@ void App3Main::InitializeCmdQueue()
 
 }
 
-void DirectXEngine::App3Main::InitializeSwapChain()
+void WoodenEngine::App3Main::InitializeSwapChain()
 {
 	IDXGIFactory4* dxgiFactory = nullptr;
 	DX::ThrowIfFailed(CreateDXGIFactory1(IID_PPV_ARGS(&dxgiFactory)));
@@ -434,7 +434,7 @@ void App3Main::BuildRootSignature()
 	DX::ThrowIfFailed(device->CreateRootSignature(0, rootSignatureBlob->GetBufferPointer(), rootSignatureBlob->GetBufferSize(), IID_PPV_ARGS(&rootSignature)));
 }
 
-void DirectXEngine::App3Main::Rotate()
+void WoodenEngine::App3Main::Rotate()
 {
 	cameraPhi += DirectX::XM_PI / 10000.0;
 }
@@ -472,14 +472,14 @@ void App3Main::BuildPipelineStateObject()
 	DX::ThrowIfFailed(device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&pso)));
 }
 
-void DirectXEngine::App3Main::Update()
+void WoodenEngine::App3Main::Update()
 {
 
 	UpdateConstBuffers();
 	WaitForGPU();
 }
 
-void DirectXEngine::App3Main::MouseMoved(const float dx, const float dy) noexcept
+void WoodenEngine::App3Main::MouseMoved(const float dx, const float dy) noexcept
 {
 	const auto dPhi = dx / window->Bounds.Width*DirectX::XM_PI;
 	const auto dTheta = dy / window->Bounds.Height*DirectX::XM_PIDIV2;
@@ -491,9 +491,9 @@ void DirectXEngine::App3Main::MouseMoved(const float dx, const float dy) noexcep
 }
 
 
-void DirectXEngine::App3Main::UpdateConstBuffers()
+void WoodenEngine::App3Main::UpdateConstBuffers()
 {
-	ConstData constData;
+	SFrameData constData;
 
 	// Update the view matrix
 	XMFLOAT4 cameraPosition;
@@ -507,27 +507,27 @@ void DirectXEngine::App3Main::UpdateConstBuffers()
 
 	const auto viewMatrix = XMMatrixLookAtLH(XMLoadFloat4(&cameraPosition), XMLoadFloat4(&cameraFocus), XMLoadFloat4(&upDirecation));
 
-	XMStoreFloat4x4(&constData.view_matrix, viewMatrix);
+	XMStoreFloat4x4(&constData.ViewMatrix, viewMatrix);
 	
 	// Update the perspective matrix
 	const auto width = window->Bounds.Width;
 	const auto height = window->Bounds.Height;
 
 	const auto projMatrix = XMMatrixPerspectiveFovLH(XM_PI / 4.0f, window->Bounds.Width / window->Bounds.Height, 1.0, 1000.0f);
-	XMStoreFloat4x4(&constData.proj_matrix, projMatrix);
+	XMStoreFloat4x4(&constData.ProjMatrix, projMatrix);
 
 	const auto viewProjMatrix = viewMatrix * projMatrix;
-	XMStoreFloat4x4(&constData.view_proj_matrix, viewProjMatrix);
+	XMStoreFloat4x4(&constData.ViewProjMatrix, viewProjMatrix);
 
 	const auto worldMatrix = XMMatrixScaling(1, 1, 1);
 	const auto worldViewProj = worldMatrix * viewMatrix*projMatrix;
-	XMStoreFloat4x4(&constData.world_view_proj_matrix, XMMatrixTranspose(worldViewProj));
+	XMStoreFloat4x4(&constData.WolrdViewProjMatrix, XMMatrixTranspose(worldViewProj));
 
 	auto* constBufferDestination = constBufferMappedData + currentBackBuffer*256;
 	memcpy(constBufferDestination, &constData, sizeof(constData));
 }
 
-bool DirectXEngine::App3Main::Render()
+bool WoodenEngine::App3Main::Render()
 {
 	DX::ThrowIfFailed(cmdAllocator->Reset());
 

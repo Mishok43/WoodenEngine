@@ -5,7 +5,7 @@
 #include "ShaderStructures.h"
 #include "MathHelper.h"
 
-namespace DirectXEngine
+namespace WoodenEngine
 {
 	/*!
 	 * \class BObject
@@ -15,15 +15,15 @@ namespace DirectXEngine
 	 * \author devmi
 	 * \date April 2018
 	 */
-	class BObject
+	class WObject
 	{
 		public:
-			BObject() = default;
-			~BObject();
+			WObject() = default;
+			~WObject();
 
-			BObject(const BObject& Obj) = delete;
-			BObject(BObject&& Obj) = delete;
-			BObject& operator=(const BObject& Obj) = delete;
+			WObject(const WObject& Obj) = delete;
+			WObject(WObject&& Obj) = delete;
+			WObject& operator=(const WObject& Obj) = delete;
 			
 			/** @brief 
 			  * @param Position An absolute world position (const XMFLOAT3 &)
@@ -31,7 +31,7 @@ namespace DirectXEngine
 			  * @param Scale An absolute world scale (const XMFLOAT3 &)
 			  * @return ()
 			  */
-			BObject(const XMFLOAT3& Position, const XMFLOAT3& Rotation, const XMFLOAT3& Scale);
+			WObject(const XMFLOAT3& Position, const XMFLOAT3& Rotation, const XMFLOAT3& Scale);
 			
 			/** @brief Set absolute world position
 			  * @param Position An absolute world position (const XMFLOAT3 &)

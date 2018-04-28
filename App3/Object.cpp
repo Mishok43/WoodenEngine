@@ -1,42 +1,42 @@
-#include "BObject.h"
+#include "Object.h"
 
-namespace DirectXEngine
+namespace WoodenEngine
 {
-	BObject::BObject()
+	WObject::WObject()
 	{
 	}
 
-	BObject::BObject(const XMFLOAT3& Position, const XMFLOAT3& Rotation, const XMFLOAT3& Scale)
+	WObject::WObject(const XMFLOAT3& Position, const XMFLOAT3& Rotation, const XMFLOAT3& Scale)
 		:Position(Position), Rotation(Rotation), Scale(Scale)
 	{
 		UpdateWorldMatrix();
 	}
 
 
-	BObject::~BObject()
+	WObject::~WObject()
 	{
 	
 	}
 
-	void BObject::SetPosition(const XMFLOAT3& Position)
+	void WObject::SetPosition(const XMFLOAT3& Position)
 	{
 		this->Position = Position;
 		UpdateWorldMatrix();
 	}
 
-	void BObject::SetRotation(const XMFLOAT3& Rotation)
+	void WObject::SetRotation(const XMFLOAT3& Rotation)
 	{
 		this->Rotation = Rotation;
 		UpdateWorldMatrix();
 	}
 
-	void BObject::SetScale(const XMFLOAT3& Scale)
+	void WObject::SetScale(const XMFLOAT3& Scale)
 	{
 		this->Scale = Scale;
 		UpdateWorldMatrix();
 	}
 
-	void BObject::UpdateWorldMatrix() 
+	void WObject::UpdateWorldMatrix() 
 	{
 		WorldMatrix = 
 			DirectX::XMMatrixScalingFromVector(XMLoadFloat3(&Scale))*

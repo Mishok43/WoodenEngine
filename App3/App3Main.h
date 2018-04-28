@@ -4,7 +4,7 @@
 #include "pch.h"
 
 // Renders Direct3D content on the screen.
-namespace DirectXEngine
+namespace WoodenEngine
 {
 	// number frame buffers for swap chain
 	static const UINT NMR_SWAP_BUFFERS = 2;

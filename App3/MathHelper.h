@@ -1,7 +1,7 @@
 #pragma once
 #include <DirectXMath.h>
 
-namespace DirectXEngine
+namespace WoodenEngine
 {
 	class MathHelper
 	{

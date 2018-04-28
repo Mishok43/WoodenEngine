@@ -1,57 +1,63 @@
 #pragma once
+#include <iostream>
+#include <string>
+
 #include "ShaderStructures.h"
 
-namespace DirectXEngine
+namespace WoodenEngine
 {
 
-	/*!
-	 * \struct MeshData
-	 *
-	 * \brief Structure contains mesh data - vertices and indices
-	 *
-	 * \author devmi
-	 * \date April 2018
-	 */
-	struct Vertex{
-		Vertex()
+	struct FVertex{
+		FVertex()
 		{}
 
-		Vertex(const float x, const float y, const float z) :
+		FVertex(const float x, const float y, const float z) :
 			Position(x, y, z)
 		{
-
 		}
 
-		Vertex(DirectX::XMFLOAT3 Position) :
+		FVertex(DirectX::XMFLOAT3 Position) :
 			Position(Position)
 		{}
 
 		DirectX::XMFLOAT3 Position;
 	};
 
-	struct MeshData
+
+	/*!
+	* \struct FMeshData
+	*
+	* \brief Structure contains mesh data - vertices and indices
+	*
+	* \author devmi
+	* \date April 2018
+	*/
+	struct FMeshData
 	{
-		std::vector<Vertex> Vertices;
+		std::string Name;
+		std::vector<FVertex> Vertices;
 		std::vector<uint16> Indices;
+		uint16 IndexBegin;
+		uint16 VertexBegin;
 	};
 
 	/*!
-	 * \class MeshGenerator
+	 * \class FMeshGenerator
 	 *
 	 * \brief It generators mesh data of various geometric figures 
 	 *
 	 * \author devmi
 	 * \date April 2018
 	 */
-	class MeshGenerator
+	class FMeshGenerator
 	{
 	public:
-		MeshGenerator();
-		~MeshGenerator();
+		FMeshGenerator();
+		~FMeshGenerator();
 
-		MeshGenerator& operator=(const MeshGenerator& Generator) = delete;
-		MeshGenerator(const MeshGenerator& Generator) = delete;
-		MeshGenerator(MeshGenerator&& Generator) = delete;
+		FMeshGenerator& operator=(const FMeshGenerator& Generator) = delete;
+		FMeshGenerator(const FMeshGenerator& Generator) = delete;
+		FMeshGenerator(FMeshGenerator&& Generator) = delete;
 
 		/** @brief Method generate a box with specific dimensions
 		  * @param Width (float)
@@ -60,7 +66,7 @@ namespace DirectXEngine
 		  * @param NumSubdivisions (uint32)
 		  * @return Mesh data of generated box (DirectXEngine::MeshData)
 		  */
-		MeshData CreateBox(
+		FMeshData CreateBox(
 			float Width,
 			float Height,
 			float Depth
@@ -72,7 +78,7 @@ namespace DirectXEngine
 		  * @param NumHSubdivisions (float)
 		  * @return Mesh data of generated sphere (DirectXEngine::MeshData)
 		  */
-		MeshData CreateSphere(
+		FMeshData CreateSphere(
 			float Radius,
 			float NumVSubdivisions,
 			float NumHSubdivisions
