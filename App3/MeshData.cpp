@@ -19,7 +19,8 @@ namespace WoodenEngine
 	) const noexcept
 	{
 		FMeshData BoxMeshData;
-		
+		BoxMeshData.Name = "Box";
+
 		const auto WidthHalf = Width / 2.0f;
 		const auto HeightHalf = Height / 2.0f;
 		const auto DepthHalf = Depth / 2.0f;
@@ -62,6 +63,7 @@ namespace WoodenEngine
 		float NumHSubdivisions) const noexcept
 	{
 		FMeshData SphereMeshData;
+		SphereMeshData.Name = "Sphere";
 		SphereMeshData.Vertices.resize((NumVSubdivisions+1)*(NumHSubdivisions));
 		SphereMeshData.Indices.resize(NumVSubdivisions*NumHSubdivisions * 2 * 3);
 		const auto TopVertexY = Radius;

@@ -141,6 +141,7 @@
       <AdditionalIncludeDirectories>$(ProjectDir);$(IntermediateOutputPath);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
       <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -154,6 +155,7 @@
       <AdditionalIncludeDirectories>$(ProjectDir);$(IntermediateOutputPath);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -194,7 +196,8 @@
   <ItemGroup>
     <ClInclude Include="App.h" />
     <ClInclude Include="Common\d3dx12.h" />
-    <ClInclude Include="App3Main.h" />
+    <ClInclude Include="EngineSettings.h" />
+    <ClInclude Include="GameMain.h" />
     <ClInclude Include="Common\DirectXHelper.h" />
     <ClInclude Include="FrameResource.h" />
     <ClInclude Include="GameResources.h" />
@@ -206,7 +209,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="App.cpp" />
-    <ClCompile Include="App3Main.cpp" />
+    <ClCompile Include="GameMain.cpp" />
     <ClCompile Include="FrameResource.cpp" />
     <ClCompile Include="GameResources.cpp" />
     <ClCompile Include="MeshData.cpp" />

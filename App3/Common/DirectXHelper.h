@@ -71,6 +71,16 @@ namespace DX
 			DX::ThrowIfFailed(Buffer->Unmap(0, nullptr));
 		}
 
+		uint64 GetByteSize() const
+		{
+			return ByteSize;
+		}
+
+		uint64 GetElementByteSize() const
+		{
+			return ElementByteSize;
+		}
+
 	private:
 		Byte* MappedData;
 

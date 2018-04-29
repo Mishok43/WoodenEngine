@@ -92,7 +92,7 @@ void App::Load(Platform::String^ entryPoint)
 {
 	if (m_main == nullptr)
 	{
-		m_main = std::unique_ptr<App3Main>(new App3Main());
+		m_main = std::unique_ptr<FGameMain>(new FGameMain());
 		m_main->Initialize(CoreWindow::GetForCurrentThread());
 	}
 }

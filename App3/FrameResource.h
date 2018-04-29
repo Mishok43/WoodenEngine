@@ -16,7 +16,7 @@ namespace WoodenEngine
 	struct FFrameResource
 	{
 	public:
-		FFrameResource() = delete;
+		FFrameResource() = default;
 		FFrameResource(ComPtr<ID3D12Device> Device, const uint64 NumberObjects);
 		~FFrameResource();
 
@@ -26,9 +26,13 @@ namespace WoodenEngine
 
 		ComPtr<ID3D12CommandAllocator> CmdListAllocator;
 
+		// Const data for shaders
 		std::unique_ptr<DX::FUploadBuffer<SFrameData>> FrameDataBuffer = nullptr;
+
+		// Per object data for shaders
 		std::unique_ptr<DX::FUploadBuffer<SObjectData>> ObjectsDataBuffer = nullptr;
 		
+		// Fence of command list
 		uint64 Fence = 0;
 	};
 }

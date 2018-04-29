@@ -3,7 +3,7 @@
 #include "pch.h"
 #include "Common\DeviceResources.h"
 #include "Common\StepTimer.h"
-#include "App3Main.h"
+#include "GameMain.h"
 
 namespace WoodenEngine
 {
@@ -41,7 +41,7 @@ namespace WoodenEngine
 		void OnPointerReleased(Windows::UI::Core::CoreWindow^ coreWindow, Windows::UI::Core::PointerEventArgs^ pointerEventArgs);
 
 	private:
-		std::unique_ptr<App3Main> m_main;
+		std::unique_ptr<FGameMain> m_main;
 		bool m_windowClosed;
 		bool m_windowVisible;
 		bool m_trackingPointer = false;

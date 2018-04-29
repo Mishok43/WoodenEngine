@@ -41,16 +41,15 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="App.cpp" />
-    <ClCompile Include="App3Main.cpp" />
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="MeshData.cpp" />
     <ClCompile Include="Object.cpp" />
     <ClCompile Include="GameResources.cpp" />
     <ClCompile Include="FrameResource.cpp" />
+    <ClCompile Include="GameMain.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="App.h" />
-    <ClInclude Include="App3Main.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="ShaderStructures.h" />
     <ClInclude Include="MathHelper.h" />
@@ -58,6 +57,8 @@
     <ClInclude Include="GameResources.h" />
     <ClInclude Include="Object.h" />
     <ClInclude Include="FrameResource.h" />
+    <ClInclude Include="EngineSettings.h" />
+    <ClInclude Include="GameMain.h" />
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest" />
