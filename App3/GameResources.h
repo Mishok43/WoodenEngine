@@ -44,6 +44,22 @@ namespace WoodenEngine
 		void LoadMeshes(
 			const std::vector<FMeshData>& MeshesData,
 			ComPtr<ID3D12GraphicsCommandList> CmdList);
+
+		/** @brief Return mesh data by name. Throws exception if no mesh data is associated with the name 
+		  * @param MeshName Name of mesh data(const std::string &)
+		  * @return Mesh data associated with the name (WoodenEngine::FMeshData)
+		  */
+		FMeshData GetMeshData(const std::string& MeshName) const;
+
+		/** @brief Returns vertex buffer view
+		  * @return Vertex buffer view (D3D12_VERTEX_BUFFER_VIEW)
+		  */
+		D3D12_VERTEX_BUFFER_VIEW GetVertexBufferView() const noexcept;
+
+		/** @brief Returns index buffer view
+		  * @return Index buffer view (D3D12_INDEX_BUFFER_VIEW)
+		  */
+		D3D12_INDEX_BUFFER_VIEW GetIndexBufferView() const noexcept;
 	private:
 		// Hash-Table consists of static meshes data, where key is a mesh's name
 		std::unordered_map<std::string, const FMeshData> StaticMeshesData;

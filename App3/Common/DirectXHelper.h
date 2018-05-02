@@ -54,7 +54,7 @@ namespace DX
 
 		FUploadBuffer(const FUploadBuffer& UploadBuffer) = delete;
 		FUploadBuffer(FUploadBuffer&& UploadBuffer) = delete;
-		FUploadBuffer& FUploadBuffer(const FUploadBuffer& UploadBuffer) = delete;
+		FUploadBuffer& operator=(const FUploadBuffer& UploadBuffer) = delete;
 
 		ID3D12Resource* Resource() const
 		{

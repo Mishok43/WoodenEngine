@@ -79,17 +79,24 @@ namespace WoodenEngine
 
 		void BuildRootSignature();
 		
-		void Rotate();
-
 		// Compile pixel and vertex hlsl shaders
 		void CompileShaders();
 
 		void BuildPipelineStateObject();
 
-		// Wait for pending GPU work to complete
+		// Wait for pending GPU work to complete with signaling
+		void SignalAndWaitForGPU();
+
 		void WaitForGPU();
 
-		void UpdateConstBuffers();
+
+		void UpdateCamera() noexcept;
+
+		void UpdateObjectsConstBuffer();
+
+		void UpdateFrameConstBuffer();
+
+		XMFLOAT4X4 ViewMatrix;
 
 		float CameraTheta = DirectX::XM_PI/3.0f;
 		float CameraPhi = DirectX::XM_PI/2.0f;
@@ -99,11 +106,13 @@ namespace WoodenEngine
 		ComPtr<ID3D12Device> Device;
 
 		ComPtr<ID3D12GraphicsCommandList> CmdList;
+		ComPtr<ID3D12CommandAllocator> CmdAllocatorDefault;
 		ComPtr<ID3D12CommandQueue> CmdQueue;
-
+		
 		ComPtr<IDXGISwapChain3> SwapChain;
 
-		uint8 iCurrentBackBuffer = 0;
+		uint8 iCurrFrame = 0;
+		FFrameResource* CurrFrameResource;
 
 		std::vector<WObject*>  Objects; 
 
@@ -135,13 +144,11 @@ namespace WoodenEngine
 		std::unordered_map<std::string, ComPtr<ID3DBlob>> Shaders;
 
 		// GPU and CPU synchronization
-		ComPtr<ID3D12Fence> fence;
-		UINT64 fenceValue = 0;
+		ComPtr<ID3D12Fence> Fence;
+		UINT64 FenceValue = 0;
 		HANDLE fenceEvent;
 
-
-		
-		// Chached reference to the output window
+		// Cached reference to the output window
 		Platform::Agile<Windows::UI::Core::CoreWindow> Window;
 	};
 }

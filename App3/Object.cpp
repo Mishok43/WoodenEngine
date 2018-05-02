@@ -62,4 +62,35 @@ namespace WoodenEngine
 			DirectX::XMMatrixRotationRollPitchYawFromVector(XMLoadFloat3(&Rotation))*
 			DirectX::XMMatrixTranslationFromVector(XMLoadFloat3(&Position));
 	}
+
+	void WObject::SetNumDirtyConstBuffers(const uint8 NumDirtyConstBuffers) noexcept
+	{
+		this->NumDirtyConstBuffers = NumDirtyConstBuffers;
+	}
+
+	void WObject::SetConstBufferIndex(const uint16 Index) noexcept
+	{
+		ConstBufferIndex = Index;
+	}
+
+	uint16 WObject::GetConstBufferIndex() const
+	{
+		return ConstBufferIndex;
+	}
+
+	uint8 WObject::GetNumDirtyConstBuffers() const
+	{
+		return NumDirtyConstBuffers;
+	}
+
+	const std::string& WObject::GetMeshName() const
+	{
+		assert(MeshName.size() != 0);
+		return MeshName;
+	}
+
+	XMMATRIX WObject::GetWorldMatrix() const noexcept
+	{
+		return WorldMatrix;
+	}
 }

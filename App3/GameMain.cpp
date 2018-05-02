@@ -27,6 +27,7 @@ bool FGameMain::Initialize(Windows::UI::Core::CoreWindow^ outWindow)
 	InitializeDevice();
 	InitializeCmdQueue();
 	BuildObjects();
+
 	InitializeDescriptorHeaps();
 	InitializeSwapChain();
 	InitializeDepthStencilBuffer();
@@ -36,14 +37,13 @@ bool FGameMain::Initialize(Windows::UI::Core::CoreWindow^ outWindow)
 	BuildRootSignature();
 	CompileShaders();
 	BuildPipelineStateObject();
-	WaitForGPU();
+	SignalAndWaitForGPU();
 
 	DX::ThrowIfFailed(CmdList->Close());
 	ID3D12CommandList* cmdLists[] = { CmdList.Get() };
 	CmdQueue->ExecuteCommandLists(_countof(cmdLists), cmdLists);
 
-	WaitForGPU();
-
+	SignalAndWaitForGPU();
 
 	return true;
 }
@@ -51,13 +51,13 @@ bool FGameMain::Initialize(Windows::UI::Core::CoreWindow^ outWindow)
 
 ID3D12Resource* WoodenEngine::FGameMain::CurrentBackBuffer() const 
 {
-	return SwapChainBuffers[iCurrentBackBuffer].Get();
+	return SwapChainBuffers[iCurrFrame].Get();
 }
 
 D3D12_CPU_DESCRIPTOR_HANDLE WoodenEngine::FGameMain::CurrentBackBufferView() const
 {
 	auto curBackBufferCPUHandle = RTVDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
-	curBackBufferCPUHandle.ptr += iCurrentBackBuffer * RTVDescriptorHandleIncrementSize;
+	curBackBufferCPUHandle.ptr += iCurrFrame * RTVDescriptorHandleIncrementSize;
 	return curBackBufferCPUHandle;
 }
 
@@ -172,7 +172,7 @@ void FGameMain::InitializeDevice()
 	DSVDescriptorHandleIncrementSize = Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 	CBVDescriptorHandleIncrementSize = Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
-	DX::ThrowIfFailed(Device->CreateFence(fenceValue, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence)));
+	DX::ThrowIfFailed(Device->CreateFence(FenceValue, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&Fence)));
 
 	fenceEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
 
@@ -243,11 +243,15 @@ void FGameMain::InitializeCmdQueue()
 	cmdQueueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
 	cmdQueueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
 
-	auto createCmdQueue = Device->CreateCommandQueue(&cmdQueueDesc, IID_PPV_ARGS(CmdQueue.GetAddressOf()));
-	DX::ThrowIfFailed(createCmdQueue);
+	DX::ThrowIfFailed(Device->CreateCommandQueue(&cmdQueueDesc, IID_PPV_ARGS(&CmdQueue)));
+	
+	DX::ThrowIfFailed(Device->CreateCommandAllocator(
+			D3D12_COMMAND_LIST_TYPE_DIRECT,
+			IID_PPV_ARGS(&CmdAllocatorDefault)));
 
-	auto createCmdListRes = Device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, CmdAllocator.Get(), nullptr, IID_PPV_ARGS(&CmdList));
-	DX::ThrowIfFailed(createCmdListRes);
+	DX::ThrowIfFailed(Device->CreateCommandList(
+		0, D3D12_COMMAND_LIST_TYPE_DIRECT, CmdAllocatorDefault.Get(), 
+		nullptr, IID_PPV_ARGS(&CmdList)));
 }
 
 void WoodenEngine::FGameMain::InitializeSwapChain()
@@ -283,7 +287,7 @@ void WoodenEngine::FGameMain::InitializeSwapChain()
 	DX::ThrowIfFailed(swapChain.As(&SwapChain));
 
 
-	iCurrentBackBuffer = SwapChain->GetCurrentBackBufferIndex();
+	iCurrFrame = SwapChain->GetCurrentBackBufferIndex();
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvDescriptor(RTVDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
 	for (int i = 0; i < NMR_SWAP_BUFFERS; ++i)
@@ -309,8 +313,13 @@ void FGameMain::BuildRootSignature()
 	CD3DX12_ROOT_PARAMETER parameter1;
 	parameter1.InitAsDescriptorTable(1, &range1, D3D12_SHADER_VISIBILITY_VERTEX);
 
+	CD3DX12_DESCRIPTOR_RANGE range2;
+	range2.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 1);
+	
+	CD3DX12_ROOT_PARAMETER parameter2;
+	parameter2.InitAsDescriptorTable(1, &range2, D3D12_SHADER_VISIBILITY_VERTEX);
 
-	auto parameters = { parameter1 };
+	auto parameters = { parameter1, parameter2 };
 	D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags = 
 		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT | 
 		D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
@@ -319,7 +328,7 @@ void FGameMain::BuildRootSignature()
 		D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS;
 
 	CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc;
-	rootSignatureDesc.Init(1, parameters.begin(), 0, nullptr, rootSignatureFlags);
+	rootSignatureDesc.Init(2, parameters.begin(), 0, nullptr, rootSignatureFlags);
 
 	ComPtr<ID3DBlob> rootSignatureBlob = nullptr;
 	ComPtr<ID3DBlob> rootSignatureBlobError = nullptr;
@@ -330,21 +339,15 @@ void FGameMain::BuildRootSignature()
 	DX::ThrowIfFailed(Device->CreateRootSignature(0, rootSignatureBlob->GetBufferPointer(), rootSignatureBlob->GetBufferSize(), IID_PPV_ARGS(&RootSignature)));
 }
 
-void WoodenEngine::FGameMain::Rotate()
-{
-	CameraPhi += DirectX::XM_PI / 10000.0;
-}
-
 void FGameMain::BuildPipelineStateObject()
 {
 	const D3D12_INPUT_ELEMENT_DESC inputElements[] =
 	{
-		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
 	};
 
 	InputLayout.pInputElementDescs = inputElements;
-	InputLayout.NumElements = 2;
+	InputLayout.NumElements = 1;
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
 
@@ -363,16 +366,78 @@ void FGameMain::BuildPipelineStateObject()
 	psoDesc.SampleDesc.Count = 1;
 	psoDesc.SampleDesc.Quality = 0;
 	psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-
 	
 	DX::ThrowIfFailed(Device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&PSO)));
 }
 
 void WoodenEngine::FGameMain::Update()
 {
+	UpdateCamera();
 
-	UpdateConstBuffers();
+	// Shift frame to the next
+	iCurrFrame = (iCurrFrame + 1) % NMR_SWAP_BUFFERS;
+	CurrFrameResource = FramesResource[iCurrFrame].get();
+
+	// Wait until this frame will be rendered with old const buffer
 	WaitForGPU();
+
+	UpdateObjectsConstBuffer();
+	UpdateFrameConstBuffer();
+}
+
+void WoodenEngine::FGameMain::UpdateCamera() noexcept
+{
+	XMFLOAT4 cameraPosition = {};
+	cameraPosition.x = XMScalarCos(CameraPhi)*XMScalarSin(CameraTheta)*CameraRadius;
+	cameraPosition.y = XMScalarSin(CameraPhi)*XMScalarSin(CameraTheta)*CameraRadius;
+	cameraPosition.z = XMScalarCos(CameraTheta)*CameraRadius;
+	cameraPosition.w = 1.0f;
+
+	XMFLOAT4 cameraFocus = { 0.0f, 0.0f, 0.0f, 1.0f };
+	XMFLOAT4 upDirecation = { 0.0f, 1.0f, 0.0f, 0.0f };
+
+	const auto ViewMatrixPacked = XMMatrixLookAtLH(XMLoadFloat4(&cameraPosition), XMLoadFloat4(&cameraFocus), XMLoadFloat4(&upDirecation));
+
+	XMStoreFloat4x4(&ViewMatrix, ViewMatrixPacked);
+}
+
+void WoodenEngine::FGameMain::UpdateObjectsConstBuffer()
+{
+	const auto ObjectsBuffer = CurrFrameResource->ObjectsDataBuffer.get();
+	for (auto Object : Objects)
+	{
+		if (Object->GetNumDirtyConstBuffers() > 0)
+		{
+			const auto WorldMatrix = Object->GetWorldMatrix();
+
+			SObjectData ObjectShaderData;
+			XMStoreFloat4x4(&ObjectShaderData.WorldMatrix, WorldMatrix);
+
+			const XMFLOAT4 RedColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+			XMStoreFloat4(&ObjectShaderData.Color, XMLoadFloat4(&RedColor));
+
+			ObjectsBuffer->CopyData(Object->GetConstBufferIndex(), ObjectShaderData);
+
+			Object->SetNumDirtyConstBuffers(Object->GetNumDirtyConstBuffers() - 1);
+		}
+	}
+}
+
+void WoodenEngine::FGameMain::UpdateFrameConstBuffer()
+{
+	SFrameData ConstFrameData;
+
+	// Update the perspective matrix
+	const auto Width = Window->Bounds.Width;
+	const auto Height = Window->Bounds.Height;
+
+	const auto ProjMatrix = XMMatrixPerspectiveFovLH(XM_PI / 4.0f, Window->Bounds.Width / Window->Bounds.Height, 1.0, 1000.0f);
+	XMStoreFloat4x4(&ConstFrameData.ProjMatrix, XMMatrixTranspose(ProjMatrix));
+
+	XMMATRIX ViewMatrixPacked = XMLoadFloat4x4(&ViewMatrix);
+	XMStoreFloat4x4(&ConstFrameData.ViewProjMatrix, XMMatrixTranspose(ViewMatrixPacked));
+
+	CurrFrameResource->FrameDataBuffer->CopyData(0, ConstFrameData);
 }
 
 void WoodenEngine::FGameMain::MouseMoved(const float dx, const float dy) noexcept
@@ -386,69 +451,29 @@ void WoodenEngine::FGameMain::MouseMoved(const float dx, const float dy) noexcep
 	
 }
 
-
-void WoodenEngine::FGameMain::UpdateConstBuffers()
+void WoodenEngine::FGameMain::Render()
 {
-	SFrameData constData;
+	auto CmdListAllocator = CurrFrameResource->CmdListAllocator;
 
-	// Update the view matrix
-	XMFLOAT4 cameraPosition;
-	cameraPosition.x = XMScalarCos(CameraPhi)*XMScalarSin(CameraTheta)*CameraRadius;
-	cameraPosition.y = XMScalarSin(CameraPhi)*XMScalarSin(CameraTheta)*CameraRadius;
-	cameraPosition.z = XMScalarCos(CameraTheta)*CameraRadius;
-	cameraPosition.w = 1.0f;
+	DX::ThrowIfFailed(CmdListAllocator->Reset());
 
-	XMFLOAT4 cameraFocus = { 0.0f, 0.0f, 0.0f, 1.0f };
-	XMFLOAT4 upDirecation = { 0.0f, 1.0f, 0.0f, 0.0f };
-
-	const auto viewMatrix = XMMatrixLookAtLH(XMLoadFloat4(&cameraPosition), XMLoadFloat4(&cameraFocus), XMLoadFloat4(&upDirecation));
-
-	XMStoreFloat4x4(&constData.ViewMatrix, viewMatrix);
-	
-	// Update the perspective matrix
-	const auto width = Window->Bounds.Width;
-	const auto height = Window->Bounds.Height;
-
-	const auto projMatrix = XMMatrixPerspectiveFovLH(XM_PI / 4.0f, Window->Bounds.Width / Window->Bounds.Height, 1.0, 1000.0f);
-	XMStoreFloat4x4(&constData.ProjMatrix, projMatrix);
-
-	const auto viewProjMatrix = viewMatrix * projMatrix;
-	XMStoreFloat4x4(&constData.ViewProjMatrix, viewProjMatrix);
-
-	const auto worldMatrix = XMMatrixScaling(1, 1, 1);
-	const auto worldViewProj = worldMatrix * viewMatrix*projMatrix;
-	XMStoreFloat4x4(&constData.WolrdViewProjMatrix, XMMatrixTranspose(worldViewProj));
-
-	auto* constBufferDestination = constBufferMappedData + iCurrentBackBuffer*256;
-	memcpy(constBufferDestination, &constData, sizeof(constData));
-}
-
-bool WoodenEngine::FGameMain::Render()
-{
-	DX::ThrowIfFailed(CmdAllocator->Reset());
-
-	DX::ThrowIfFailed(CmdList->Reset(CmdAllocator.Get(), PSO.Get()));
+	DX::ThrowIfFailed(CmdList->Reset(CmdListAllocator.Get(), PSO.Get()));
 	
 	CmdList->SetGraphicsRootSignature(RootSignature.Get());
-
 
 	ID3D12DescriptorHeap* cbvDescriptorHeaps[] = { CBVDescriptorHeap.Get() };
 	CmdList->SetDescriptorHeaps(_countof(cbvDescriptorHeaps), cbvDescriptorHeaps);
 
-
-	CmdList->SetGraphicsRootDescriptorTable(0, CurrentCBVGPUHandle());
-
+	auto CBVGPUHandle = CurrentCBVGPUHandle();
+	CBVGPUHandle.ptr += (Objects.size()*NMR_SWAP_BUFFERS+iCurrFrame)*CBVDescriptorHandleIncrementSize;
+	CmdList->SetGraphicsRootDescriptorTable(1, CurrentCBVGPUHandle());
 
 	CmdList->RSSetViewports(1, &ScreenViewport);
 	CmdList->RSSetScissorRects(1, &ScissorRect);
 
-
-
 	CmdList->ResourceBarrier(
 		1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET)
 	);
-
-
 
 	CmdList->ClearRenderTargetView(CurrentBackBufferView(), Colors::White, 0, nullptr);
 	CmdList->ClearDepthStencilView(DSVDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
@@ -457,15 +482,20 @@ bool WoodenEngine::FGameMain::Render()
 
 
 
-
-
-
-	CmdList->IASetVertexBuffers(0, 1, &vertexBufferView);
-	CmdList->IASetIndexBuffer(&indexBufferView);
+	CmdList->IASetVertexBuffers(0, 1, &GameResources->GetVertexBufferView());
+	CmdList->IASetIndexBuffer(&GameResources->GetIndexBufferView());
 	CmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
+	for (auto* RenderObject : Objects)
+	{
+		const auto& MeshName = RenderObject->GetMeshName();
+		const auto MeshData = GameResources->GetMeshData(MeshName);
 
-	CmdList->DrawIndexedInstanced(boxIndexCount, 1, 0, 0, 0);
+		
+		CmdList->DrawIndexedInstanced(
+			MeshData.Indices.size(), 1, MeshData
+			.IndexBegin, MeshData.VertexBegin, 0);
+	}
 
 	CmdList->ResourceBarrier(
 		1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT)
@@ -478,43 +508,29 @@ bool WoodenEngine::FGameMain::Render()
 
 	DX::ThrowIfFailed(SwapChain->Present(1, 0));
 
-	iCurrentBackBuffer = (iCurrentBackBuffer + 1) % NMR_SWAP_BUFFERS;
+	iCurrFrame = (iCurrFrame + 1) % NMR_SWAP_BUFFERS;
 	
-	WaitForGPU();
-
-
-	return true;
+	SignalAndWaitForGPU();
 }
 
 
-void FGameMain::WaitForGPU()
+void FGameMain::SignalAndWaitForGPU()
 {
-	DX::ThrowIfFailed(CmdQueue->Signal(fence.Get(), fenceValue));
-	DX::ThrowIfFailed(fence->SetEventOnCompletion(fenceValue, fenceEvent));
+	DX::ThrowIfFailed(CmdQueue->Signal(Fence.Get(), FenceValue));
+	DX::ThrowIfFailed(Fence->SetEventOnCompletion(FenceValue, fenceEvent));
 
 	WaitForSingleObjectEx(fenceEvent, INFINITE, false);
 
-	++fenceValue;
+	CurrFrameResource->Fence = ++FenceValue;
+}
 
-	/*
-	// Advance the fence value to mark commands up to this fence point.
-	fenceValue++;
-
-	// Add an instruction to the command queue to set a new fence point.  Because we 
-	// are on the GPU timeline, the new fence point won't be set until the GPU finishes
-	// processing all the commands prior to this Signal().
-	DX::ThrowIfFailed(cmdQueue->Signal(fence.Get(), fenceValue));
-
-	// Wait until the GPU has completed commands up to this fence point.
-	if (fence->GetCompletedValue() < fenceValue)
+void FGameMain::WaitForGPU()
+{
+	if (CurrFrameResource->Fence != 0 && Fence->GetCompletedValue() < CurrFrameResource->Fence)
 	{
-		HANDLE eventHandle = CreateEventEx(nullptr, false, false, EVENT_ALL_ACCESS);
-
-		// Fire event when GPU hits current fence.  
-		DX::ThrowIfFailed(fence->SetEventOnCompletion(fenceValue, eventHandle));
-
-		// Wait until the GPU hits current fence event is fired.
-		WaitForSingleObject(eventHandle, INFINITE);
-		CloseHandle(eventHandle);
-	}*/
+		HANDLE EventHandle = CreateEventEx(nullptr, false, false, EVENT_ALL_ACCESS);
+		DX::ThrowIfFailed(Fence->SetEventOnCompletion(CurrFrameResource->Fence, EventHandle));
+		WaitForSingleObject(EventHandle, INFINITE);
+		CloseHandle(EventHandle);
+	}
 }

@@ -9,5 +9,4 @@ namespace WoodenEngine
 
 	static const DXGI_FORMAT BufferFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
 	static const DXGI_FORMAT DepthStencilFormat = DXGI_FORMAT_D32_FLOAT;
-
 }

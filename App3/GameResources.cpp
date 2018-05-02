@@ -78,4 +78,21 @@ namespace WoodenEngine
 		assert(Device != nullptr);
 		this->Device = Device;
 	}
+
+	FMeshData FGameResources::GetMeshData(const std::string& MeshName) const
+	{
+		auto MeshDataIt = StaticMeshesData.find(MeshName);
+		assert(MeshDataIt != StaticMeshesData.end());
+		return MeshDataIt->second;
+	}
+
+	D3D12_VERTEX_BUFFER_VIEW FGameResources::GetVertexBufferView() const noexcept
+	{
+		return VertexBufferView;
+	}
+
+	D3D12_INDEX_BUFFER_VIEW FGameResources::GetIndexBufferView() const noexcept
+	{
+		return IndexBufferView;
+	}
 }

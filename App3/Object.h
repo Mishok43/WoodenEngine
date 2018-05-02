@@ -40,6 +40,19 @@ namespace WoodenEngine
 			
 			void Update(float Delta);
 
+			/** @brief Sets object's index in shader const buffer
+			  * @param Index Object's index in shader const buffer(const uint16)
+			  * @return (void)
+			  */
+			void SetConstBufferIndex(const uint16 Index) noexcept;
+
+
+			/** @brief Set number not updated const buffers (same as frames)
+			  * @param NumDirtyConstBuffers Numbfer not updated const buffers/frames (const uint8)
+			  * @return (void)
+			  */
+			void SetNumDirtyConstBuffers(const uint8 NumDirtyConstBuffers) noexcept;
+
 			/** @brief Sets absolute world position
 			  * @param Position An absolute world position (const XMFLOAT3 &)
 			  * @return (void)
@@ -81,6 +94,26 @@ namespace WoodenEngine
 			* @return (void)
 			*/
 			void SetScale(const float X, const float Y, const float Z) noexcept;
+
+			/** @brief Returns object's world matrix for rendering
+			  * @return World matrix (DirectX::XMMATRIX)
+			  */
+			XMMATRIX GetWorldMatrix() const noexcept;
+
+			/** @brief Returns index in const buffer
+			  * @return Get index in const buffer (default::uint16)
+			  */
+			uint16 GetConstBufferIndex() const;
+
+			/** @brief Returns number of still not updated const buffer (same as frames)
+			  * @return (default::uint8)
+			  */
+			uint8 GetNumDirtyConstBuffers() const noexcept;
+
+			/** @brief Returns name of static mesh data. If it's empty, method throws exception
+			  * @return Name of mesh data(const std::string&)
+			  */
+			const std::string& GetMeshName() const;
 		private:	
 			// Absolute matrix of transformation in the world. Used for rendering
 			XMMATRIX WorldMatrix = DirectX::XMMatrixIdentity();
@@ -100,6 +133,12 @@ namespace WoodenEngine
 			// Current mesh data name
 			std::string MeshName;
 	
+			// Index of object in const buffer
+			uint16 ConstBufferIndex;
+
+			// Number not updated const buffers
+			uint8 NumDirtyConstBuffers = NMR_SWAP_BUFFERS;
+
 			/** @brief Recomputes the world matrix considering Position, Rotation and Scale in the world
 			  * @return (void)
 			  */
