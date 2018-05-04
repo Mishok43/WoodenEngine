@@ -1,4 +1,5 @@
 #include "FrameResource.h"
+#include "Common/DirectXHelper.h"
 
 namespace WoodenEngine
 {

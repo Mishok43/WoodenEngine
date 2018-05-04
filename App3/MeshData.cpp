@@ -28,12 +28,12 @@ namespace WoodenEngine
 		BoxMeshData.Vertices = {
 			{ -WidthHalf, -HeightHalf, -DepthHalf },
 			{ WidthHalf, -HeightHalf, -DepthHalf },
-			{ -WidthHalf, HeightHalf, -DepthHalf },
 			{ WidthHalf, HeightHalf, -DepthHalf },
+			{ -WidthHalf, HeightHalf, -DepthHalf },
 			{ -WidthHalf, -HeightHalf, DepthHalf },
 			{ WidthHalf, -HeightHalf, DepthHalf },
-			{ -WidthHalf, HeightHalf, DepthHalf },
-			{ WidthHalf, HeightHalf, DepthHalf }
+			{ WidthHalf, HeightHalf, DepthHalf },
+			{ -WidthHalf, HeightHalf, DepthHalf }
 		};
 
 		BoxMeshData.Indices = {
@@ -42,16 +42,24 @@ namespace WoodenEngine
 			0, 3, 2,
 
 			// back face
-			4, 6, 5,
-			4, 7, 6,
+			5, 6, 7,
+			5, 7, 4,
 
 			// top face
 			3, 7, 6,
 			3, 6, 2,
 
 			// back face
-			0, 4, 5,
-			0, 5, 1
+			4, 0, 1,
+			4, 1, 6,
+
+			// left face
+			4, 3, 0,
+			4, 7, 3,
+
+			// right face
+			1, 2, 6,
+			1, 6, 5
 		};
 
 		return BoxMeshData;
@@ -65,7 +73,7 @@ namespace WoodenEngine
 		FMeshData SphereMeshData;
 		SphereMeshData.Name = "Sphere";
 		SphereMeshData.Vertices.resize((NumVSubdivisions+1)*(NumHSubdivisions));
-		SphereMeshData.Indices.resize(NumVSubdivisions*NumHSubdivisions * 2 * 3);
+		SphereMeshData.Indices.resize((2*NumHSubdivisions + (NumVSubdivisions-2)*NumHSubdivisions*2)*3);
 		const auto TopVertexY = Radius;
 		const auto BottomVertexY = -Radius;
 		const auto VAngleOffset = DirectX::XM_PI / NumVSubdivisions;
@@ -106,7 +114,7 @@ namespace WoodenEngine
 		uint16 VertexIndex = 0;
 		for (auto iVSubdivision = 1; iVSubdivision < NumVSubdivisions+1; ++iVSubdivision)
 		{
-			for (auto iHSubdivision = 0; iHSubdivision < NumHSubdivisions-1; ++iHSubdivision, ++VertexIndex)
+			for (auto iHSubdivision = 0; iHSubdivision < NumHSubdivisions-1; ++iHSubdivision, VertexIndex+=6)
 			{
 				const auto TopLeftVIndex = (iVSubdivision - 1)*NumHSubdivisions +iHSubdivision;
 				const auto TopRightVIndex = TopLeftVIndex+1;

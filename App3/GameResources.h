@@ -20,7 +20,7 @@ namespace WoodenEngine
 	class FGameResources
 	{
 	public: 
-		FGameResources() = default;
+		FGameResources();
 		FGameResources(ComPtr<ID3D12Device> Device);
 		~FGameResources();
 
@@ -75,10 +75,14 @@ namespace WoodenEngine
 	
 		// DX12 Buffer of vertices of static meshes
 		ComPtr<ID3D12Resource> VertexBuffer;
+		ComPtr<ID3D12Resource> VertexUploadBuffer;
+
 		D3D12_VERTEX_BUFFER_VIEW VertexBufferView;
 
 		// DX12 Buffer of indices of static meshes
 		ComPtr<ID3D12Resource> IndexBuffer;
+		ComPtr<ID3D12Resource> IndexUploadBuffer;
+
 		D3D12_INDEX_BUFFER_VIEW IndexBufferView;
 	};
 }

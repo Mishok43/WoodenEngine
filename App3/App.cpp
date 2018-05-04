@@ -106,20 +106,21 @@ void App::Run()
 		if (m_windowVisible)
 		{
 			CoreWindow::GetForCurrentThread()->Dispatcher->ProcessEvents(CoreProcessEventsOption::ProcessAllIfPresent);
-			timer.Tick([&]()
-			{
+		//	timer.Tick([&]()
+		//	{
 				m_main->Update();
-			});
+		//	});
+
+//			if (timer.GetFrameCount() == 0)
+//			{
+//				continue;
+//			}
 			
-			if (timer.GetFrameCount() == 0)
-			{
-				continue;
-			}
-				
-			if (m_main->Render())
-			{
+			m_main->Render();
+		//	if (m_main->Render())
+		//	{
 				//GetDeviceResources()->Present();
-			}
+		//	}
 		}
 		else
 		{
@@ -153,7 +154,7 @@ void App::OnSuspending(Platform::Object^ sender, SuspendingEventArgs^ args)
 
 	create_task([this, deferral]()
 	{
-		m_main->OnSuspending();
+//		m_main->OnSuspending();
 		deferral->Complete();
 	});
 }
@@ -164,14 +165,14 @@ void App::OnResuming(Platform::Object^ sender, Platform::Object^ args)
 	// and state are persisted when resuming from suspend. Note that this event
 	// does not occur if the app was previously terminated.
 
-	m_main->OnResuming();
+//	m_main->OnResuming();
 }
 
 // Window event handlers.
 
 void App::OnWindowSizeChanged(CoreWindow^ sender, WindowSizeChangedEventArgs^ args)
 {
-	m_main->OnWindowSizeChanged();
+//	m_main->OnWindowSizeChanged();
 }
 
 void App::OnVisibilityChanged(CoreWindow^ sender, VisibilityChangedEventArgs^ args)
@@ -192,12 +193,12 @@ void App::OnDpiChanged(DisplayInformation^ sender, Object^ args)
 	// if it is being scaled for high resolution devices. Once the DPI is set on DeviceResources,
 	// you should always retrieve it using the GetDpi method.
 	// See DeviceResources.cpp for more details.
-	m_main->OnWindowSizeChanged();
+//	m_main->OnWindowSizeChanged();
 }
 
 void App::OnOrientationChanged(DisplayInformation^ sender, Object^ args)
 {
-	m_main->OnWindowSizeChanged();
+//	m_main->OnWindowSizeChanged();
 }
 
 void App::OnDisplayContentsInvalidated(DisplayInformation^ sender, Object^ args)

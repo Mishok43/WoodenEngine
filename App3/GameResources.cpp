@@ -24,35 +24,51 @@ namespace WoodenEngine
 	{
 		assert(MeshesData.size() != 0);
 
+		uint64 NumVertices = 0;
+		uint64 NumIndices = 0;
+		for (auto MeshData : MeshesData)
+		{
+			NumVertices += MeshData.Vertices.size();
+			NumIndices += MeshData.Indices.size();
+		}
+
+		VertexData.reserve(NumVertices);
+		IndexData.reserve(NumIndices);
+		
+		auto VertexDataIter = VertexData.cend();
+		auto IndexDataIter = IndexData.cend();
 		// Adding vertices and indices of every mesh to common arrays
 		for (auto MeshData : MeshesData)
 		{
 			MeshData.VertexBegin = VertexData.size();
 
 			const auto VertexDataNewSize = VertexData.size() + MeshData.Vertices.size();
-			VertexData.reserve(VertexDataNewSize*sizeof(SVertexData));
 
-			for (int i = MeshData.VertexBegin; i < VertexDataNewSize; i++)
+			for (auto i = MeshData.VertexBegin; i < VertexDataNewSize; i++)
 			{
-				VertexData[i] = { MeshData.Vertices[i - MeshData.VertexBegin].Position };
+				const SVertexData Vertex = { MeshData.Vertices[i - MeshData.VertexBegin].Position };
+				VertexDataIter = VertexData.insert(VertexDataIter, std::move(Vertex));
+				VertexDataIter++;
 			}
 
 			MeshData.IndexBegin = IndexData.size();
 
 			const auto IndexDataNewSize = IndexData.size() + MeshData.Indices.size();
-			VertexData.reserve(IndexDataNewSize* sizeof(uint16));
-			for (int i = MeshData.IndexBegin; i < IndexDataNewSize; i++)
+			
+			for (auto i = MeshData.IndexBegin; i < IndexDataNewSize; i++)
 			{
-				IndexData[i] =  MeshData.Indices[i - MeshData.VertexBegin];
+				const auto Index = MeshData.Indices[i - MeshData.IndexBegin];
+				IndexDataIter = IndexData.insert(IndexDataIter, std::move(Index));
+				IndexDataIter++;
 			}
 
 			StaticMeshesData.insert(std::make_pair(MeshData.Name, MeshData));
 		}
 
 		// Create vertex buffer 
-		const auto VertexBufferSize = sizeof(VertexData);
+		const auto VertexBufferSize = sizeof(SVertexData)*VertexData.size();
 
-		VertexBuffer = DX::CreateBuffer(Device, CMDList, VertexBufferSize, VertexData.data());
+		VertexBuffer = DX::CreateBuffer(Device, CMDList, VertexBufferSize, VertexData.data(), VertexUploadBuffer);
 
 		CMDList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(VertexBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER));
 
@@ -62,8 +78,8 @@ namespace WoodenEngine
 		VertexBufferView.StrideInBytes = sizeof(SVertexData);
 
 		// Create index buffer
-		const auto IndexBufferSize = sizeof(IndexData);
-		IndexBuffer = DX::CreateBuffer(Device, CMDList, IndexBufferSize, IndexData.data());
+		const auto IndexBufferSize = 2*IndexData.size();
+		IndexBuffer = DX::CreateBuffer(Device, CMDList, IndexBufferSize, IndexData.data(), IndexUploadBuffer);
 
 		CMDList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(IndexBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDEX_BUFFER));
 

@@ -5,18 +5,22 @@
 #include <vector>
 
 #include "EngineSettings.h"
-#include "Object.h"
-#include "FrameResource.h"
-#include "GameResources.h"
 #include "pch.h"
+
 
 // Renders Direct3D content on the screen.
 namespace WoodenEngine
 {
+	using namespace DirectX;
+
+	class FFrameResource;
+	class FGameResources;
+	class WObject;
+
 	class FGameMain
 	{
 	public:
-		FGameMain() = default;
+		FGameMain();
 		
 		FGameMain(FGameMain&& GameMain) = delete;
 		FGameMain(const FGameMain& GameMain) = delete;
@@ -80,7 +84,7 @@ namespace WoodenEngine
 		void BuildRootSignature();
 		
 		// Compile pixel and vertex hlsl shaders
-		void CompileShaders();
+		void InitializeShaders();
 
 		void BuildPipelineStateObject();
 
@@ -100,7 +104,7 @@ namespace WoodenEngine
 
 		float CameraTheta = DirectX::XM_PI/3.0f;
 		float CameraPhi = DirectX::XM_PI/2.0f;
-		float CameraRadius = 5.0f;
+		float CameraRadius = 10.0f;
 
 		// DX12 Device
 		ComPtr<ID3D12Device> Device;
@@ -111,7 +115,8 @@ namespace WoodenEngine
 		
 		ComPtr<IDXGISwapChain3> SwapChain;
 
-		uint8 iCurrFrame = 0;
+		uint8 iCurrBackBuffer = 0;
+		uint8 iCurrFrameResource = 0;
 		FFrameResource* CurrFrameResource;
 
 		std::vector<WObject*>  Objects; 

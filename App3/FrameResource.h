@@ -1,7 +1,12 @@
 #pragma once
 
-#include "Common/DirectXHelper.h"
 #include "ShaderStructures.h"
+
+namespace DX
+{
+	template<typename T>
+	class FUploadBuffer;
+}
 
 namespace WoodenEngine
 {
@@ -18,7 +23,7 @@ namespace WoodenEngine
 	public:
 		FFrameResource() = default;
 		FFrameResource(ComPtr<ID3D12Device> Device, const uint64 NumberObjects);
-		~FFrameResource();
+		~FFrameResource() = default;
 
 		FFrameResource(const FFrameResource& FrameResources) = delete;
 		FFrameResource(FFrameResource&& FrameResource) = delete;

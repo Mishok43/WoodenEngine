@@ -2,7 +2,12 @@
 
 #include <ppltasks.h>	// For create_task
 #include <D3Dcompiler.h>
+
 #include "pch.h"
+
+// Naming helper function for ComPtr<T>.
+// Assigns the name of the variable as the name of the object.
+#define NAME_D3D12_OBJECT(x) DX::SetName(x.Get(), L#x)
 
 
 namespace DX
@@ -33,23 +38,29 @@ namespace DX
 
 			// Size of const buffer must be divided by 256 
 			ElementByteSize = (bIsConstantBuffer) ?
-				(sizeof(T) + 255)*(~255) : sizeof(T);
+				(sizeof(T) + 255)&(~255) : sizeof(T);
 			ByteSize = ElementByteSize * NumberElements;
 
 			DX::ThrowIfFailed(Device->CreateCommittedResource(
-				CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+				&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
 				D3D12_HEAP_FLAG_NONE,
-				CD3DX12_RESOURCE_DESC::Buffer(ByteSize),
+				&CD3DX12_RESOURCE_DESC::Buffer(ByteSize),
 				D3D12_RESOURCE_STATE_GENERIC_READ,
 				nullptr,
-				IID_PPV_ARGS(&Buffer);
+				IID_PPV_ARGS(&Buffer)
 			));
 
-			DX::ThrowIfFailed(Buffer->Map(0, nullptr, &MappedData));
+			NAME_D3D12_OBJECT(Buffer);
+
+			DX::ThrowIfFailed(Buffer->Map(0, nullptr, reinterpret_cast<void**>(&MappedData)));
 		}
 
 		~FUploadBuffer()
 		{
+			if (Buffer != nullptr)
+				Buffer->Unmap(0, nullptr);
+
+			MappedData = nullptr;
 		}
 
 		FUploadBuffer(const FUploadBuffer& UploadBuffer) = delete;
@@ -58,12 +69,12 @@ namespace DX
 
 		ID3D12Resource* Resource() const
 		{
-			return Buffer;
+			return Buffer.Get();
 		}
 
 		void CopyData(const uint16 ElementIndex, const T& ElementData)
 		{
-			memcpy(MappedData[ElementIndex*ElementByteSize], &ElementData, sizeof(ElementByteSize));
+			memcpy(&MappedData[ElementIndex*ElementByteSize], (&ElementData), sizeof(T));
 		}
 
 		void UnmapData()
@@ -82,7 +93,7 @@ namespace DX
 		}
 
 	private:
-		Byte* MappedData;
+		byte* MappedData;
 
 		ComPtr<ID3D12Resource> Buffer;
 		uint64 ByteSize;
@@ -98,7 +109,8 @@ namespace DX
 		ComPtr<ID3D12Device> Device,
 		ComPtr<ID3D12GraphicsCommandList> CmdList,
 		const uint64 ByteSize,
-		const void* const InitData
+		const void* const InitData,
+		ComPtr<ID3D12Resource>& UploadBuffer
 	)
 	{
 		ComPtr<ID3D12Resource> Buffer;
@@ -114,7 +126,6 @@ namespace DX
 			IID_PPV_ARGS(&Buffer)
 		));
 
-		ComPtr<ID3D12Resource> UploadBuffer;
 
 		DX::ThrowIfFailed(Device->CreateCommittedResource(
 			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
@@ -167,13 +178,14 @@ namespace DX
 	}
 
 
-	Microsoft::WRL::ComPtr<ID3DBlob> CompileShader(
+	inline Microsoft::WRL::ComPtr<ID3DBlob> CompileShader(
 		const std::wstring& filename,
 		const D3D_SHADER_MACRO* defines,
 		const std::string& entrypoint,
 		const std::string& target)
 	{
 		UINT compileFlags = 0;
+
 #if defined(DEBUG) || defined(_DEBUG)  
 		compileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
 #endif
@@ -191,7 +203,6 @@ namespace DX
 		ThrowIfFailed(hr);
 
 		return byteCode;
-
 	}
 
 	// Assign a name to the object to aid with debugging.
@@ -333,7 +344,3 @@ namespace DX
 
 
 }
-
-// Naming helper function for ComPtr<T>.
-// Assigns the name of the variable as the name of the object.
-#define NAME_D3D12_OBJECT(x) DX::SetName(x.Get(), L#x)

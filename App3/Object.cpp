@@ -52,7 +52,7 @@ namespace WoodenEngine
 
 	void WObject::SetScale(const float X, const float Y, const float Z) noexcept
 	{
-		SetScale(X, Y, Z);
+		SetScale({ X, Y, Z });
 	}
 
 	void WObject::UpdateWorldMatrix() noexcept 
@@ -68,17 +68,18 @@ namespace WoodenEngine
 		this->NumDirtyConstBuffers = NumDirtyConstBuffers;
 	}
 
-	void WObject::SetConstBufferIndex(const uint16 Index) noexcept
+	void WObject::SetConstBufferIndex(const uint64 Index) noexcept
 	{
 		ConstBufferIndex = Index;
 	}
 
-	uint16 WObject::GetConstBufferIndex() const
+	uint64 WObject::GetConstBufferIndex() const
 	{
+		assert(ConstBufferIndex != UINT64_MAX); // ConstBufferIndex must be set
 		return ConstBufferIndex;
 	}
 
-	uint8 WObject::GetNumDirtyConstBuffers() const
+	uint8 WObject::GetNumDirtyConstBuffers() const noexcept
 	{
 		return NumDirtyConstBuffers;
 	}

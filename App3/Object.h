@@ -4,6 +4,7 @@
 
 #include "ShaderStructures.h"
 #include "MathHelper.h"
+#include "EngineSettings.h"
 
 namespace WoodenEngine
 {
@@ -41,10 +42,10 @@ namespace WoodenEngine
 			void Update(float Delta);
 
 			/** @brief Sets object's index in shader const buffer
-			  * @param Index Object's index in shader const buffer(const uint16)
+			  * @param Index Object's index in shader const buffer(const uint64)
 			  * @return (void)
 			  */
-			void SetConstBufferIndex(const uint16 Index) noexcept;
+			void SetConstBufferIndex(const uint64 Index) noexcept;
 
 
 			/** @brief Set number not updated const buffers (same as frames)
@@ -103,7 +104,7 @@ namespace WoodenEngine
 			/** @brief Returns index in const buffer
 			  * @return Get index in const buffer (default::uint16)
 			  */
-			uint16 GetConstBufferIndex() const;
+			uint64 GetConstBufferIndex() const;
 
 			/** @brief Returns number of still not updated const buffer (same as frames)
 			  * @return (default::uint8)
@@ -134,7 +135,7 @@ namespace WoodenEngine
 			std::string MeshName;
 	
 			// Index of object in const buffer
-			uint16 ConstBufferIndex;
+			uint64 ConstBufferIndex = UINT64_MAX;
 
 			// Number not updated const buffers
 			uint8 NumDirtyConstBuffers = NMR_SWAP_BUFFERS;
