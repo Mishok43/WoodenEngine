@@ -195,6 +195,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="App.h" />
+    <ClInclude Include="Camera.h" />
     <ClInclude Include="Common\d3dx12.h" />
     <ClInclude Include="EngineSettings.h" />
     <ClInclude Include="GameMain.h" />
@@ -209,6 +210,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="App.cpp" />
+    <ClCompile Include="Camera.cpp" />
     <ClCompile Include="GameMain.cpp" />
     <ClCompile Include="FrameResource.cpp" />
     <ClCompile Include="GameResources.cpp" />

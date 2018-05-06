@@ -106,10 +106,10 @@ void App::Run()
 		if (m_windowVisible)
 		{
 			CoreWindow::GetForCurrentThread()->Dispatcher->ProcessEvents(CoreProcessEventsOption::ProcessAllIfPresent);
-		//	timer.Tick([&]()
-		//	{
-				m_main->Update();
-		//	});
+			timer.Tick([&](float Delta)
+			{
+				m_main->Update(Delta);
+			});
 
 //			if (timer.GetFrameCount() == 0)
 //			{

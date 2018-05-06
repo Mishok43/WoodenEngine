@@ -19,8 +19,8 @@ namespace WoodenEngine
 	class WObject
 	{
 		public:
-			WObject();
-			~WObject();
+			WObject()=default;
+			virtual ~WObject()=default;
 
 			WObject(const WObject& Obj) = delete;
 			WObject(WObject&& Obj) = delete;
@@ -39,14 +39,31 @@ namespace WoodenEngine
 				const XMFLOAT3& Rotation = { 0.0f, 0.0f, 0.0f },
 				const XMFLOAT3& Scale = { 1.0f, 1.0f, 1.0f });
 			
-			void Update(float Delta);
+			/** @brief Update function for executing object's login
+			  * @warning bIsUpdating must be true!
+			  * @param Delta Delta time(float)
+			  * @return (void)
+			  */
+			virtual void Update(float Delta);
+
+			/** @brief Enable/Disable tracking input events (such as mouse moving)
+			  * @param EnableInput (const bool)
+			  * @return (void)
+			  */
+			void SetEnableInputEvents(const bool EnableInput) noexcept;
+
+			/** @brief Called when mouse was moved
+			* @param dx Delta X (const float)
+			* @param dy Delta Y (const float)
+			* @return (void)
+			*/
+			virtual void InputMouseMoved(const float dx, const float dy) noexcept;
 
 			/** @brief Sets object's index in shader const buffer
 			  * @param Index Object's index in shader const buffer(const uint64)
 			  * @return (void)
 			  */
 			void SetConstBufferIndex(const uint64 Index) noexcept;
-
 
 			/** @brief Set number not updated const buffers (same as frames)
 			  * @param NumDirtyConstBuffers Numbfer not updated const buffers/frames (const uint8)
@@ -96,10 +113,29 @@ namespace WoodenEngine
 			*/
 			void SetScale(const float X, const float Y, const float Z) noexcept;
 
+			/** @brief Set default shader color
+			  * @param Color (XMFLOAT4)
+			  * @return (void)
+			  */
+			void SetColor(XMFLOAT4 Color) noexcept;
+
+			/** @brief Set flag object is supposed to be rendered to the screen
+			  * @param Renderable (const bool)
+			  * @return (void)
+			  */
+			void SetIsRenderable(const bool Renderable) noexcept;
+
+
+			/** @brief Set flag update method is calling
+			  * @return (void)
+			  */
+			void SetIsUpdating(const bool IsUpdating) noexcept;
+
+
 			/** @brief Returns object's world matrix for rendering
 			  * @return World matrix (DirectX::XMMATRIX)
 			  */
-			XMMATRIX GetWorldMatrix() const noexcept;
+			const XMMATRIX& GetWorldMatrix() const noexcept;
 
 			/** @brief Returns index in const buffer
 			  * @return Get index in const buffer (default::uint16)
@@ -115,6 +151,35 @@ namespace WoodenEngine
 			  * @return Name of mesh data(const std::string&)
 			  */
 			const std::string& GetMeshName() const;
+
+			/** @brief Returns flag if object is supposed to be rendered to the screen
+			  * @return true - renderable/false - not(bool)
+			  */
+			bool IsRenderable() const noexcept;
+
+			/** @brief Returns flag if update method is calling
+			  * @return (bool)
+			  */
+			bool IsUpdating() const noexcept;
+
+			/** @brief Returns flag if enaling input tracking
+			  * @return (bool)
+			  */
+			bool IsEnabledInputEvents() const noexcept;
+
+			/** @brief Returns default shader color parameter
+			  * @return (const DirectX::XMFLOAT4&)
+			  */
+			const XMFLOAT4& GetColor() const noexcept;
+		protected:
+			// Flags if update method is executing or not
+			bool bIsUpdating = true;
+
+			// Flags is object supposed to be rendered
+			bool bIsRenderable = false;
+
+			// Enabling tracking input events (such as mouse moving)
+			bool bIsEnabledInputEvents = false;
 		private:	
 			// Absolute matrix of transformation in the world. Used for rendering
 			XMMATRIX WorldMatrix = DirectX::XMMatrixIdentity();
@@ -124,6 +189,9 @@ namespace WoodenEngine
 
 			// Vector with an absolute rotation in the world
 			XMFLOAT3 Rotation;
+
+			// Default shader color parameter
+			XMFLOAT4 Color;
 
 			// Vector with an absolute scale in the world (default: 1.0f, 1.0f, 1.0f)
 			XMFLOAT3 Scale = MathHelper::Identity3();
@@ -143,6 +211,6 @@ namespace WoodenEngine
 			/** @brief Recomputes the world matrix considering Position, Rotation and Scale in the world
 			  * @return (void)
 			  */
-			virtual void UpdateWorldMatrix() noexcept;
+			void UpdateWorldMatrix() noexcept;
 	};
 }

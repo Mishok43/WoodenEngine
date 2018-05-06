@@ -5,6 +5,7 @@
 #include "FrameResource.h"
 #include "GameResources.h"
 #include "Object.h"
+#include "Camera.h"
 #include "Common/DirectXHelper.h"
 #include "ShaderStructures.h"
 
@@ -26,21 +27,21 @@ bool FGameMain::Initialize(Windows::UI::Core::CoreWindow^ outWindow)
 {
 	Window = outWindow;
 
-	InitializeDevice();
-	InitializeCmdQueue();
-	BuildObjects();
+	InitDevice();
+	InitCmdQueue();
+	AddObjects();
 
-	InitializeDescriptorHeaps();
+	InitDescriptorHeap();
 
-	InitializeSwapChain();
-	InitializeDepthStencilBuffer();
-	InitializeViewport();
+	InitSwapChain();
+	InitDepthStencilBuffer();
+	InitViewport();
 
 	BuildFrameResources();
-	InitializeConstBuffersViews();
+	InitConstBuffersViews();
 
 	BuildRootSignature();
-	InitializeShaders();
+	InitShaders();
 	BuildPipelineStateObject();
 
 	DX::ThrowIfFailed(CmdList->Close());
@@ -80,7 +81,7 @@ void FGameMain::BuildFrameResources()
 	}
 }
 
-void FGameMain::InitializeViewport()
+void FGameMain::InitViewport()
 {
 	ScreenViewport.Width = Window->Bounds.Width;
 	ScreenViewport.Height = Window->Bounds.Height;
@@ -92,7 +93,7 @@ void FGameMain::InitializeViewport()
 	ScissorRect = { 0, 0, static_cast<long>(ScreenViewport.Width), static_cast<long>(ScreenViewport.Height) };
 }
 
-void FGameMain::InitializeDepthStencilBuffer()
+void FGameMain::InitDepthStencilBuffer()
 {
 	D3D12_RESOURCE_DESC depthResourceDesc = CD3DX12_RESOURCE_DESC::Tex2D(DepthStencilFormat, Window->Bounds.Width, Window->Bounds.Height, 1, 1);
 	depthResourceDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
@@ -118,7 +119,7 @@ void FGameMain::InitializeDepthStencilBuffer()
 	Device->CreateDepthStencilView(DepthStencilBuffer.Get(), &depthStencilViewDesc, DSVDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
 }
 
-void FGameMain::InitializeConstBuffersViews()
+void FGameMain::InitConstBuffersViews()
 {
 	auto CBVDescriptorHandle = CBVDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
 
@@ -156,7 +157,7 @@ void FGameMain::InitializeConstBuffersViews()
 	}
 }
 
-void FGameMain::InitializeDevice()
+void FGameMain::InitDevice()
 {
 
 #if defined(_DEBUG)
@@ -191,17 +192,17 @@ void FGameMain::InitializeDevice()
 		sizeof(multisampleData)));
 }
 
-void FGameMain::BuildObjects()
+void FGameMain::AddObjects()
 {
 	GameResources = std::make_unique<FGameResources>(Device);
 	
 	// Build and load static meshes
 	FMeshGenerator* MeshGenerator = new FMeshGenerator();
 	const auto BoxMesh = MeshGenerator->CreateBox(1.0f, 1.0f, 1.0f);
-	const auto SphereMesh = MeshGenerator->CreateSphere(1.0f, 4.0f, 4.0f);
+	const auto SphereMesh = MeshGenerator->CreateSphere(1.0f, 20.0f, 20.0f);
 
 	const std::vector<FMeshData> Meshes = {
-		BoxMesh, SphereMesh
+		std::move(BoxMesh), std::move(SphereMesh)
 	};
 
 	GameResources->LoadMeshes(Meshes, CmdList);
@@ -210,18 +211,22 @@ void FGameMain::BuildObjects()
 	auto* BoxObject = new WObject(BoxMesh.Name);
 	BoxObject->SetConstBufferIndex(0);
 	BoxObject->SetPosition(1.5f, 0.0f, 0.0f);
+	BoxObject->SetColor({ 1.0f, 0.0f, 0.0f, 1.0f });
 	Objects.push_back(BoxObject);
 	
 	auto* SphereObject = new WObject(SphereMesh.Name);
 	SphereObject->SetConstBufferIndex(1);
-	SphereObject->SetPosition(-8.0f, 5.0f, -5.0f);
-	SphereObject->SetScale(1.5f, 1.5f, 1.5f);
+	SphereObject->SetPosition(2.5f, 2.0f, 2.0f);
+	SphereObject->SetScale(1.25f, 1.25f, 1.25f);
+	SphereObject->SetColor({ 0.0f, 1.0f, 0.0f, 1.0f });
 	Objects.push_back(SphereObject);
+
+	Camera = new WCamera(Window->Bounds.Width, Window->Bounds.Height);
+	Objects.push_back(Camera);
 }
 
-void FGameMain::InitializeDescriptorHeaps()
+void FGameMain::InitDescriptorHeap()
 {
-
 	D3D12_DESCRIPTOR_HEAP_DESC rtvDescriptorHeapDesc = {};
 	rtvDescriptorHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 	rtvDescriptorHeapDesc.NumDescriptors = NMR_SWAP_BUFFERS;
@@ -246,7 +251,7 @@ void FGameMain::InitializeDescriptorHeaps()
 	DX::ThrowIfFailed(Device->CreateDescriptorHeap(&cbvDescriptorHeapDesc, IID_PPV_ARGS(&CBVDescriptorHeap)));
 }
 
-void FGameMain::InitializeCmdQueue()
+void FGameMain::InitCmdQueue()
 {
 	auto cmdQueueDesc = D3D12_COMMAND_QUEUE_DESC{};
 	cmdQueueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
@@ -263,7 +268,7 @@ void FGameMain::InitializeCmdQueue()
 		nullptr, IID_PPV_ARGS(&CmdList)));
 }
 
-void WoodenEngine::FGameMain::InitializeSwapChain()
+void WoodenEngine::FGameMain::InitSwapChain()
 {
 	IDXGIFactory4* dxgiFactory = nullptr;
 	DX::ThrowIfFailed(CreateDXGIFactory1(IID_PPV_ARGS(&dxgiFactory)));
@@ -306,7 +311,7 @@ void WoodenEngine::FGameMain::InitializeSwapChain()
 	}
 }
 
-void FGameMain::InitializeShaders()
+void FGameMain::InitShaders()
 {
 	Shaders["standartVS"] = DX::CompileShader(L"Shaders\\color.hlsl", nullptr, "VS", "vs_5_0");
 	Shaders["opaquePS"] = DX::CompileShader(L"Shaders\\color.hlsl", nullptr, "PS", "ps_5_0");
@@ -378,51 +383,42 @@ void FGameMain::BuildPipelineStateObject()
 	DX::ThrowIfFailed(Device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&PSO)));
 }
 
-void WoodenEngine::FGameMain::Update()
+void WoodenEngine::FGameMain::Update(float dtime)
 {
-	UpdateCamera();
+	for (auto Object : Objects)
+	{
+		if (Object->IsUpdating())
+		{
+			Object->Update(dtime);
+		}
+	}
 
 	// Shift frame to the next
 	iCurrFrameResource = (iCurrFrameResource + 1) % NMR_SWAP_BUFFERS;
 	CurrFrameResource = FramesResource[iCurrFrameResource].get();
 
 	// Wait until this frame will be rendered with old const buffer
-	WaitForGPU();
+	WaitForGPU(CurrFrameResource->Fence);
 
 	UpdateObjectsConstBuffer();
 	UpdateFrameConstBuffer();
 }
 
-void WoodenEngine::FGameMain::UpdateCamera() noexcept
-{
-	XMFLOAT4 cameraPosition = {};
-	cameraPosition.x = XMScalarCos(CameraPhi)*XMScalarSin(CameraTheta)*CameraRadius;
-	cameraPosition.y = XMScalarSin(CameraPhi)*XMScalarSin(CameraTheta)*CameraRadius;
-	cameraPosition.z = XMScalarCos(CameraTheta)*CameraRadius;
-	cameraPosition.w = 1.0f;
-
-	XMFLOAT4 cameraFocus = { 0.0f, 0.0f, 0.0f, 1.0f };
-	XMFLOAT4 upDirecation = { 0.0f, 1.0f, 0.0f, 0.0f };
-
-	const auto ViewMatrixPacked = XMMatrixLookAtLH(XMLoadFloat4(&cameraPosition), XMLoadFloat4(&cameraFocus), XMLoadFloat4(&upDirecation));
-
-	XMStoreFloat4x4(&ViewMatrix, ViewMatrixPacked);
-}
 
 void WoodenEngine::FGameMain::UpdateObjectsConstBuffer()
 {
 	auto ObjectsBuffer = CurrFrameResource->ObjectsDataBuffer.get();
 	for (auto Object : Objects)
 	{
-		if (Object->GetNumDirtyConstBuffers() > 0)
+		if (Object->IsRenderable() && Object->GetNumDirtyConstBuffers() > 0)
 		{
 			const auto WorldMatrix = Object->GetWorldMatrix();
 
 			SObjectData ObjectShaderData;
 			XMStoreFloat4x4(&ObjectShaderData.WorldMatrix, XMMatrixTranspose(WorldMatrix));
 
-			const XMFLOAT4 RedColor = { 1.0f, 0.0f, 0.0f, 1.0f };
-			XMStoreFloat4(&ObjectShaderData.Color, XMLoadFloat4(&RedColor));
+			const auto Color = Object->GetColor();
+			XMStoreFloat4(&ObjectShaderData.Color, XMLoadFloat4(&Color));
 
 			ObjectsBuffer->CopyData(Object->GetConstBufferIndex(), ObjectShaderData);
 
@@ -433,31 +429,16 @@ void WoodenEngine::FGameMain::UpdateObjectsConstBuffer()
 
 void WoodenEngine::FGameMain::UpdateFrameConstBuffer()
 {
-	SFrameData ConstFrameData;
+	SFrameData ConstFrameData = {};
 
-	// Update the perspective matrix
-	const auto Width = Window->Bounds.Width;
-	const auto Height = Window->Bounds.Height;
+	const auto& ViewMatrix = Camera->GetViewMatrix();
 
-
-	XMFLOAT4 cameraPosition = {};
-	cameraPosition.x = XMScalarCos(CameraPhi)*XMScalarSin(CameraTheta)*CameraRadius;
-	cameraPosition.y = XMScalarSin(CameraPhi)*XMScalarSin(CameraTheta)*CameraRadius;
-	cameraPosition.z = XMScalarCos(CameraTheta)*CameraRadius;
-	cameraPosition.w = 1.0f;
-
-	XMFLOAT4 cameraFocus = { 0.0f, 0.0f, 0.0f, 1.0f };
-	XMFLOAT4 upDirecation = { 0.0f, 1.0f, 0.0f, 0.0f };
-
-	auto ViewMatrixPacked = XMMatrixLookAtLH(XMLoadFloat4(&cameraPosition), XMLoadFloat4(&cameraFocus), XMLoadFloat4(&upDirecation));
-
-
-	XMStoreFloat4x4(&ConstFrameData.ViewMatrix, ViewMatrixPacked);
+	XMStoreFloat4x4(&ConstFrameData.ViewMatrix, XMMatrixTranspose(ViewMatrix));
 
 	auto ProjMatrix = XMMatrixPerspectiveFovLH(XM_PI / 4.0f, Window->Bounds.Width / Window->Bounds.Height, 1.0, 1000.0f);
 	XMStoreFloat4x4(&ConstFrameData.ProjMatrix, XMMatrixTranspose(ProjMatrix));
 
-	auto ViewProj = XMMatrixMultiply(ViewMatrixPacked, ProjMatrix);
+	auto ViewProj = XMMatrixMultiply(ViewMatrix, ProjMatrix);
 	XMStoreFloat4x4(&ConstFrameData.ViewProjMatrix, XMMatrixTranspose(ViewProj));
 
 	CurrFrameResource->FrameDataBuffer->CopyData(0, ConstFrameData);
@@ -465,13 +446,13 @@ void WoodenEngine::FGameMain::UpdateFrameConstBuffer()
 
 void WoodenEngine::FGameMain::MouseMoved(const float dx, const float dy) noexcept
 {
-	const auto dPhi = dx / Window->Bounds.Width*DirectX::XM_PI;
-	const auto dTheta = dy / Window->Bounds.Height*DirectX::XM_PIDIV2;
-
-	CameraPhi += dPhi;
-
-	CameraTheta += dTheta;
-	
+	for (auto Object : Objects)
+	{
+		if (Object->IsEnabledInputEvents())
+		{
+			Object->InputMouseMoved(dx, dy);
+		}
+	}
 }
 
 void WoodenEngine::FGameMain::Render()
@@ -482,7 +463,6 @@ void WoodenEngine::FGameMain::Render()
 
 	DX::ThrowIfFailed(CmdList->Reset(CmdListAllocator.Get(), PSO.Get()));
 	
-
 	CmdList->ResourceBarrier(
 		1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET)
 	);
@@ -509,13 +489,18 @@ void WoodenEngine::FGameMain::Render()
 	CmdList->IASetIndexBuffer(&GameResources->GetIndexBufferView());
 	CmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-	for (auto* RenderObject : Objects)
+	for (auto Object : Objects)
 	{
-		const auto& MeshName = RenderObject->GetMeshName();
+		if (!Object->IsRenderable())
+		{
+			continue;
+		}
+
+		const auto& MeshName = Object->GetMeshName();
 		const auto MeshData = GameResources->GetMeshData(MeshName);
 		
 		auto CBVGPUHandle = CurrentCBVGPUHandle();
-		CBVGPUHandle.ptr += (Objects.size()*iCurrFrameResource + RenderObject->GetConstBufferIndex())*CBVDescriptorHandleIncrementSize;
+		CBVGPUHandle.ptr += (Objects.size()*iCurrFrameResource + Object->GetConstBufferIndex())*CBVDescriptorHandleIncrementSize;
 		CmdList->SetGraphicsRootDescriptorTable(0, CBVGPUHandle);
 
 		CmdList->DrawIndexedInstanced(
@@ -530,7 +515,6 @@ void WoodenEngine::FGameMain::Render()
 	DX::ThrowIfFailed(CmdList->Close());
 	ID3D12CommandList* cmdLists[] = { CmdList.Get() };
 	CmdQueue->ExecuteCommandLists(_countof(cmdLists), cmdLists);
-
 
 	DX::ThrowIfFailed(SwapChain->Present(1, 0));
 
@@ -552,12 +536,12 @@ void FGameMain::SignalAndWaitForGPU()
 	WaitForSingleObjectEx(fenceEvent, INFINITE, false);
 }
 
-void FGameMain::WaitForGPU()
+void FGameMain::WaitForGPU(const uint64 NewFence)
 {
-	if (CurrFrameResource->Fence != 0 && Fence->GetCompletedValue() < CurrFrameResource->Fence)
+	if (NewFence != 0 && Fence->GetCompletedValue() < NewFence)
 	{
 		HANDLE EventHandle = CreateEventEx(nullptr, false, false, EVENT_ALL_ACCESS);
-		DX::ThrowIfFailed(Fence->SetEventOnCompletion(CurrFrameResource->Fence, EventHandle));
+		DX::ThrowIfFailed(Fence->SetEventOnCompletion(NewFence, EventHandle));
 		WaitForSingleObject(EventHandle, INFINITE);
 		CloseHandle(EventHandle);
 	}

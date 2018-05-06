@@ -131,7 +131,7 @@ namespace DX
 					m_leftOverTicks -= m_targetElapsedTicks;
 					m_frameCount++;
 
-					update();
+					update(timeDelta);
 				}
 			}
 			else
@@ -142,7 +142,7 @@ namespace DX
 				m_leftOverTicks = 0;
 				m_frameCount++;
 
-				update();
+				update(timeDelta);
 			}
 
 			// Track the current framerate.

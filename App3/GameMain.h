@@ -16,9 +16,10 @@ namespace WoodenEngine
 	class FFrameResource;
 	class FGameResources;
 	class WObject;
+	class WCamera;
 
 	class FGameMain
-	{
+ 	{
 	public:
 		FGameMain();
 		
@@ -32,7 +33,7 @@ namespace WoodenEngine
 		  * It contains rendering logic
 		  * @return (void)
 		  */
-		void Update();
+		void Update(float dtime);
 
 		/** @brief Called when mouse was moved 
 		  * @param dx Delta X (const float)
@@ -45,7 +46,6 @@ namespace WoodenEngine
 		  * @return (void)
 		  */
 		void Render();
-
 
 		/** @brief Init dx12 device and other components
 		  * @param outputWindow (Windows::UI::Core::CoreWindow ^)
@@ -60,23 +60,23 @@ namespace WoodenEngine
 		D3D12_GPU_DESCRIPTOR_HANDLE CurrentCBVGPUHandle() const;
 
 		// Initialize device, fetch property data
-		void InitializeDevice();
+		void InitDevice();
 
 		// Initialize graphics direct command list and command queue
-		void InitializeCmdQueue();
-
-		void BuildObjects();
+		void InitCmdQueue();
+		
+		void AddObjects();
 
 		// Initialize rtv heaps
-		void InitializeDescriptorHeaps();
+		void InitDescriptorHeap();
 
-		void InitializeSwapChain();
+		void InitSwapChain();
 
-		void InitializeDepthStencilBuffer();
+		void InitDepthStencilBuffer();
 
-		void InitializeConstBuffersViews();
+		void InitConstBuffersViews();
 
-		void InitializeViewport();
+		void InitViewport();
 
 		// Create RTV for every frame
 		void BuildFrameResources();
@@ -84,27 +84,20 @@ namespace WoodenEngine
 		void BuildRootSignature();
 		
 		// Compile pixel and vertex hlsl shaders
-		void InitializeShaders();
+		void InitShaders();
 
 		void BuildPipelineStateObject();
 
 		// Wait for pending GPU work to complete with signaling
 		void SignalAndWaitForGPU();
 
-		void WaitForGPU();
-
-
-		void UpdateCamera() noexcept;
+		void WaitForGPU(const uint64 NewFence);
 
 		void UpdateObjectsConstBuffer();
 
 		void UpdateFrameConstBuffer();
 
-		XMFLOAT4X4 ViewMatrix;
-
-		float CameraTheta = DirectX::XM_PI/3.0f;
-		float CameraPhi = DirectX::XM_PI/2.0f;
-		float CameraRadius = 10.0f;
+		WCamera* Camera;
 
 		// DX12 Device
 		ComPtr<ID3D12Device> Device;
@@ -122,8 +115,6 @@ namespace WoodenEngine
 		std::vector<WObject*>  Objects; 
 
 		std::unique_ptr<FGameResources> GameResources;
-	
-		
 		std::unique_ptr<FFrameResource> FramesResource[NMR_SWAP_BUFFERS];
 
 		ComPtr<ID3D12Resource> SwapChainBuffers[NMR_SWAP_BUFFERS];

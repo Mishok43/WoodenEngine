@@ -51,7 +51,7 @@ namespace WoodenEngine
 
 			// back face
 			4, 0, 1,
-			4, 1, 6,
+			4, 1, 5,
 
 			// left face
 			4, 3, 0,
@@ -73,7 +73,7 @@ namespace WoodenEngine
 		FMeshData SphereMeshData;
 		SphereMeshData.Name = "Sphere";
 		SphereMeshData.Vertices.resize((NumVSubdivisions+1)*(NumHSubdivisions));
-		SphereMeshData.Indices.resize((2*NumHSubdivisions + (NumVSubdivisions-2)*NumHSubdivisions*2)*3);
+		SphereMeshData.Indices.resize((2*2*NumHSubdivisions + (NumVSubdivisions-2)*(NumHSubdivisions)*2)*3);
 		const auto TopVertexY = Radius;
 		const auto BottomVertexY = -Radius;
 		const auto VAngleOffset = DirectX::XM_PI / NumVSubdivisions;
@@ -114,7 +114,7 @@ namespace WoodenEngine
 		uint16 VertexIndex = 0;
 		for (auto iVSubdivision = 1; iVSubdivision < NumVSubdivisions+1; ++iVSubdivision)
 		{
-			for (auto iHSubdivision = 0; iHSubdivision < NumHSubdivisions-1; ++iHSubdivision, VertexIndex+=6)
+			for (auto iHSubdivision = 0; iHSubdivision < NumHSubdivisions; ++iHSubdivision, VertexIndex+=6)
 			{
 				const auto TopLeftVIndex = (iVSubdivision - 1)*NumHSubdivisions +iHSubdivision;
 				const auto TopRightVIndex = TopLeftVIndex+1;
