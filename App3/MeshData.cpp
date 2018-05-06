@@ -1,3 +1,8 @@
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <string>
+
 #include "MeshData.h"
 
 namespace WoodenEngine
@@ -131,5 +136,87 @@ namespace WoodenEngine
 		}
 
 		return SphereMeshData;
+	}
+
+	template<typename Out>
+	void split(const std::string &s, char delim, Out result)
+	{
+		std::stringstream ss(s);
+		std::string item;
+		while (std::getline(ss, item, delim))
+		{
+			*(result++) = item;
+		}
+	}
+
+	std::vector<std::string> split(const std::string &s, char delim)
+	{
+		std::vector<std::string> elems;
+		split(s, delim, std::back_inserter(elems));
+		return elems;
+	}
+
+	FMeshData FMeshParser::ParseMeshData(const std::string& FilePath) const
+	{
+		auto MeshData = FMeshData{};
+
+		std::ifstream File;
+		File.open(FilePath, std::ios_base::in);
+
+		if (!File.is_open())
+		{
+			throw std::invalid_argument("File can't be opened by path " + FilePath);
+		}
+
+		if (File.eof())
+		{
+			throw std::invalid_argument("File " + FilePath + "is empty");
+		}
+		
+		std::string StrNumVertex;
+		std::getline(File, StrNumVertex);
+
+		MeshData.Vertices.reserve(std::stoi(StrNumVertex));		
+		
+		std::string StrNumIndex;
+		std::getline(File, StrNumIndex);
+
+		MeshData.Indices.reserve(std::stoi(StrNumIndex));
+
+		auto VerticesIter = MeshData.Vertices.cend();
+		std::string StrVertexData;
+		for (auto iVertex = 0; iVertex < MeshData.Vertices.capacity(); ++iVertex)
+		{
+			std::getline(File, StrVertexData);
+			auto VertexData = split(StrVertexData, ' ');
+			
+			FVertex Vertex;
+			Vertex.Position.x = std::stof(std::move(VertexData[0]));
+			Vertex.Position.y = std::stof(std::move(VertexData[1]));
+			Vertex.Position.z = std::stof(std::move(VertexData[2]));
+
+			VerticesIter = MeshData.Vertices.insert(VerticesIter, std::move(Vertex));
+			VerticesIter++;
+		}
+
+		auto IndicesIter = MeshData.Indices.cend();
+		std::string StrIndexData;
+		for (auto iIndex = 0; iIndex < MeshData.Indices.capacity()/3; ++iIndex)
+		{
+			std::getline(File, StrIndexData);
+			auto IndexData = split(StrIndexData, ' ');
+
+			IndicesIter = MeshData.Indices.insert(IndicesIter, std::stoi(std::move(IndexData[0])));
+			IndicesIter++;
+
+			IndicesIter = MeshData.Indices.insert(IndicesIter, std::stoi(std::move(IndexData[1])));
+			IndicesIter++;
+
+			IndicesIter = MeshData.Indices.insert(IndicesIter, std::stoi(std::move(IndexData[2])));
+			IndicesIter++;
+		}
+
+		File.close();
+		return MeshData;
 	}
 }

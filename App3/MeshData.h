@@ -85,5 +85,30 @@ namespace WoodenEngine
 		) const noexcept;
 	};
 
+	/*!
+	 * \class FMeshParser
+	 *
+	 * \brief Helper class for parsing external data files with mesh for exporting them to MeshData
+	 *
+	 * \author devmi
+	 * \date May 2018
+	 */
+	class FMeshParser
+	{
+	public:
+		FMeshParser() = default;
+		~FMeshParser() = default;
 
+		FMeshParser& operator=(const FMeshParser& MeshParser) = delete;
+		FMeshParser(const FMeshParser& MeshParser) = delete;
+		FMeshParser(FMeshParser&& MeshParser) = delete;
+
+		/** @brief Parses external file with mesh data
+		* @param FilePath Path to file (format: *.txt) with mesh data (const std::string &)
+		* @return Parsed mesh data (WoodenEngine::FMeshData)
+		*/
+		FMeshData ParseMeshData(const std::string& FilePath) const;
+	private:
+
+	};
 }

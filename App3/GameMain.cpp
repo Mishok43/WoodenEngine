@@ -61,16 +61,11 @@ ID3D12Resource* WoodenEngine::FGameMain::CurrentBackBuffer() const
 
 D3D12_CPU_DESCRIPTOR_HANDLE WoodenEngine::FGameMain::CurrentBackBufferView() const
 {
-	auto curBackBufferCPUHandle = RTVDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
-	curBackBufferCPUHandle.ptr += iCurrBackBuffer * RTVDescriptorHandleIncrementSize;
-	return curBackBufferCPUHandle;
-}
+	auto CPUDescriptorHandle = CD3DX12_CPU_DESCRIPTOR_HANDLE{
+			RTVDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
+			iCurrBackBuffer, RTVDescriptorHandleIncrementSize };
 
-D3D12_GPU_DESCRIPTOR_HANDLE WoodenEngine::FGameMain::CurrentCBVGPUHandle() const 
-{
-	auto currentCBVDescriptorHeapGPUHandle = CBVDescriptorHeap->GetGPUDescriptorHandleForHeapStart();
-	currentCBVDescriptorHeapGPUHandle.ptr += 0* CBVDescriptorHandleIncrementSize;
-	return currentCBVDescriptorHeapGPUHandle;
+	return CPUDescriptorHandle;
 }
 
 void FGameMain::BuildFrameResources()
@@ -121,7 +116,8 @@ void FGameMain::InitDepthStencilBuffer()
 
 void FGameMain::InitConstBuffersViews()
 {
-	auto CBVDescriptorHandle = CBVDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+	auto CBVDescriptorHandle = CD3DX12_CPU_DESCRIPTOR_HANDLE{
+		CBVDescriptorHeap->GetCPUDescriptorHandleForHeapStart()};
 
 	// Initialize cbv for objects 
 	for (uint8 iFrame = 0; iFrame < NMR_SWAP_BUFFERS; ++iFrame)
@@ -136,7 +132,7 @@ void FGameMain::InitConstBuffersViews()
 
 			Device->CreateConstantBufferView(&ConstBufferViewDesc, CBVDescriptorHandle);
 
-			CBVDescriptorHandle.ptr += CBVDescriptorHandleIncrementSize;
+			CBVDescriptorHandle.Offset(1, CBVDescriptorHandleIncrementSize);
 		}
 	}
 
@@ -153,7 +149,7 @@ void FGameMain::InitConstBuffersViews()
 
 		Device->CreateConstantBufferView(&ConstBufferViewDesc, CBVDescriptorHandle);
 
-		CBVDescriptorHandle.ptr += CBVDescriptorHandleIncrementSize;
+		CBVDescriptorHandle.Offset(1, CBVDescriptorHandleIncrementSize);
 	}
 }
 
@@ -198,28 +194,43 @@ void FGameMain::AddObjects()
 	
 	// Build and load static meshes
 	FMeshGenerator* MeshGenerator = new FMeshGenerator();
-	const auto BoxMesh = MeshGenerator->CreateBox(1.0f, 1.0f, 1.0f);
-	const auto SphereMesh = MeshGenerator->CreateSphere(1.0f, 20.0f, 20.0f);
+	auto BoxMesh = MeshGenerator->CreateBox(1.0f, 1.0f, 1.0f);
+	auto SphereMesh = MeshGenerator->CreateSphere(1.0f, 20.0f, 20.0f);
+
+	FMeshParser* MeshParser = new FMeshParser();
+	auto SkullMesh = MeshParser->ParseMeshData("Assets\\Models\\skull.txt");
+	SkullMesh.Name = "Skull";
+
+	const std::string BoxMeshName = BoxMesh.Name;
+	const std::string SphereMeshName = SphereMesh.Name;
+	const std::string SkullMeshName = SkullMesh.Name;
 
 	const std::vector<FMeshData> Meshes = {
-		std::move(BoxMesh), std::move(SphereMesh)
+		std::move(BoxMesh), std::move(SphereMesh), std::move(SkullMesh)
 	};
 
 	GameResources->LoadMeshes(Meshes, CmdList);
 
 	// Create objects
-	auto* BoxObject = new WObject(BoxMesh.Name);
+	auto* BoxObject = new WObject(BoxMeshName);
 	BoxObject->SetConstBufferIndex(0);
 	BoxObject->SetPosition(1.5f, 0.0f, 0.0f);
 	BoxObject->SetColor({ 1.0f, 0.0f, 0.0f, 1.0f });
 	Objects.push_back(BoxObject);
 	
-	auto* SphereObject = new WObject(SphereMesh.Name);
+	auto* SphereObject = new WObject(SphereMeshName);
 	SphereObject->SetConstBufferIndex(1);
 	SphereObject->SetPosition(2.5f, 2.0f, 2.0f);
 	SphereObject->SetScale(1.25f, 1.25f, 1.25f);
 	SphereObject->SetColor({ 0.0f, 1.0f, 0.0f, 1.0f });
 	Objects.push_back(SphereObject);
+
+	auto* SkullObject = new WObject(SkullMeshName);
+	SkullObject->SetConstBufferIndex(2);
+	SkullObject->SetPosition({ -1.5f, -1.5f, 0.0f });
+	SkullObject->SetScale(0.5f, 0.5f, 0.5f);
+	SkullObject->SetColor({ 0.0f, 0.0f, 1.0f, 1.0f });
+	Objects.push_back(SkullObject);
 
 	Camera = new WCamera(Window->Bounds.Width, Window->Bounds.Height);
 	Objects.push_back(Camera);
@@ -302,12 +313,13 @@ void WoodenEngine::FGameMain::InitSwapChain()
 	DX::ThrowIfFailed(swapChain.As(&SwapChain));
 
 
-	auto RTVCPUHandle = RTVDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+	auto RTVCPUHandle = CD3DX12_CPU_DESCRIPTOR_HANDLE{
+		RTVDescriptorHeap->GetCPUDescriptorHandleForHeapStart() };
 	for (int i = 0; i < NMR_SWAP_BUFFERS; ++i)
 	{
 		SwapChain->GetBuffer(i, IID_PPV_ARGS(&SwapChainBuffers[i]));
 		Device->CreateRenderTargetView(SwapChainBuffers[i].Get(), nullptr, RTVCPUHandle);
-		RTVCPUHandle.ptr += RTVDescriptorHandleIncrementSize;
+		RTVCPUHandle.Offset(1, RTVDescriptorHandleIncrementSize);
 	}
 }
 
@@ -473,8 +485,10 @@ void WoodenEngine::FGameMain::Render()
 	CmdList->SetDescriptorHeaps(_countof(cbvDescriptorHeaps), cbvDescriptorHeaps);
 
 	// Set frame const buffer as argumet to shader
-	auto CBVGPUHandle = CurrentCBVGPUHandle();
-	CBVGPUHandle.ptr += (Objects.size()*NMR_SWAP_BUFFERS + iCurrFrameResource)*CBVDescriptorHandleIncrementSize;
+	auto CBVGPUHandle = CD3DX12_GPU_DESCRIPTOR_HANDLE{ 
+		CBVDescriptorHeap->GetGPUDescriptorHandleForHeapStart() };
+	CBVGPUHandle.Offset(Objects.size()*NMR_SWAP_BUFFERS + iCurrFrameResource,
+		CBVDescriptorHandleIncrementSize);
 	CmdList->SetGraphicsRootDescriptorTable(1, CBVGPUHandle);
 
 	CmdList->RSSetViewports(1, &ScreenViewport);
@@ -499,8 +513,11 @@ void WoodenEngine::FGameMain::Render()
 		const auto& MeshName = Object->GetMeshName();
 		const auto MeshData = GameResources->GetMeshData(MeshName);
 		
-		auto CBVGPUHandle = CurrentCBVGPUHandle();
-		CBVGPUHandle.ptr += (Objects.size()*iCurrFrameResource + Object->GetConstBufferIndex())*CBVDescriptorHandleIncrementSize;
+		auto CBVGPUHandle = CD3DX12_GPU_DESCRIPTOR_HANDLE{
+			CBVDescriptorHeap->GetGPUDescriptorHandleForHeapStart() };
+		CBVGPUHandle.Offset(Objects.size()*iCurrFrameResource + Object->GetConstBufferIndex(), 
+			CBVDescriptorHandleIncrementSize);
+		
 		CmdList->SetGraphicsRootDescriptorTable(0, CBVGPUHandle);
 
 		CmdList->DrawIndexedInstanced(

@@ -56,8 +56,7 @@ namespace WoodenEngine
 		ID3D12Resource* CurrentBackBuffer() const;
 		
 		D3D12_CPU_DESCRIPTOR_HANDLE CurrentBackBufferView() const;
-		
-		D3D12_GPU_DESCRIPTOR_HANDLE CurrentCBVGPUHandle() const;
+	
 
 		// Initialize device, fetch property data
 		void InitDevice();
