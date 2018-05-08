@@ -31,16 +31,18 @@ namespace WoodenEngine
 
 	void WCamera::UpdateViewMatrix() noexcept
 	{
-		XMFLOAT4 cameraPosition = {};
-		cameraPosition.x = XMScalarCos(ZAngle)*XMScalarSin(XAngle)*ViewRadius;
-		cameraPosition.y = XMScalarSin(ZAngle)*XMScalarSin(XAngle)*ViewRadius;
-		cameraPosition.z = XMScalarCos(XAngle)*ViewRadius;
-		cameraPosition.w = 1.0f;
+		XMFLOAT4 CameraPosition = {};
+		CameraPosition.x = XMScalarCos(ZAngle)*XMScalarSin(XAngle)*ViewRadius;
+		CameraPosition.y = XMScalarSin(ZAngle)*XMScalarSin(XAngle)*ViewRadius;
+		CameraPosition.z = XMScalarCos(XAngle)*ViewRadius;
+		CameraPosition.w = 1.0f;
 
-		XMFLOAT4 cameraFocus = { 0.0f, 0.0f, 0.0f, 1.0f };
-		XMFLOAT4 upDirecation = { 0.0f, 1.0f, 0.0f, 0.0f };
+		XMFLOAT4 CameraFocus = { 0.0f, 0.0f, 0.0f, 1.0f };
+		XMFLOAT4 UpDirecation = { 0.0f, 1.0f, 0.0f, 0.0f };
 
-		ViewMatrix = XMMatrixLookAtLH(XMLoadFloat4(&cameraPosition), XMLoadFloat4(&cameraFocus), XMLoadFloat4(&upDirecation));
+		ViewMatrix = XMMatrixLookAtLH(XMLoadFloat4(&CameraPosition), XMLoadFloat4(&CameraFocus), XMLoadFloat4(&UpDirecation));
+
+		SetPosition(CameraPosition.x, CameraPosition.y, CameraPosition.z);
 	}
 
 	void WCamera::InputMouseMoved(const float dx, const float dy) noexcept

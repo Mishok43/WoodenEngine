@@ -1,8 +1,7 @@
 #pragma once
-
-#include "GameResources.h"
 #include "Common/DirectXHelper.h"
 
+#include "GameResources.h"
 namespace WoodenEngine
 {
 	FGameResources::FGameResources()
@@ -19,56 +18,63 @@ namespace WoodenEngine
 	}
 
 	void FGameResources::LoadMeshes(
-		const std::vector<FMeshData>& MeshesData,
+		std::vector<std::unique_ptr<FMeshData>>&& MeshesData,
 		ComPtr<ID3D12GraphicsCommandList> CMDList)
 	{
 		assert(MeshesData.size() != 0);
 
 		uint64 NumVertices = 0;
 		uint64 NumIndices = 0;
-		for (auto MeshData : MeshesData)
+		
+		for (auto iMesh = 0; iMesh < MeshesData.size(); ++iMesh)
 		{
-			NumVertices += MeshData.Vertices.size();
-			NumIndices += MeshData.Indices.size();
+			auto MeshData = MeshesData[iMesh].get();
+
+			NumVertices += MeshData->Vertices.size();
+			NumIndices += MeshData->Indices.size();
 		}
 
-		VertexData.reserve(NumVertices);
-		IndexData.reserve(NumIndices);
+		VerticesData.reserve(NumVertices);
+		IndicesData.reserve(NumIndices);
 		
-		auto VertexDataIter = VertexData.cend();
-		auto IndexDataIter = IndexData.cend();
+		auto VertexDataIter = VerticesData.cend();
+		auto IndexDataIter = IndicesData.cend();
 		// Adding vertices and indices of every mesh to common arrays
-		for (auto MeshData : MeshesData)
+		for (auto iMesh = 0; iMesh < MeshesData.size(); ++iMesh)
 		{
-			MeshData.VertexBegin = VertexData.size();
+			auto MeshData = MeshesData[iMesh].get();
+			MeshData->VertexBegin = VerticesData.size();
 
-			const auto VertexDataNewSize = VertexData.size() + MeshData.Vertices.size();
+			const auto VertexDataNewSize = VerticesData.size() + MeshData->Vertices.size();
 
-			for (auto i = MeshData.VertexBegin; i < VertexDataNewSize; i++)
+			for (auto i = MeshData->VertexBegin; i < VertexDataNewSize; i++)
 			{
-				const SVertexData Vertex = { MeshData.Vertices[i - MeshData.VertexBegin].Position };
-				VertexDataIter = VertexData.insert(VertexDataIter, std::move(Vertex));
+				const auto iVertex = i - MeshData->VertexBegin;
+
+				const SVertexData Vertex = 
+				{ MeshData->Vertices[iVertex].Position, MeshData->Vertices[iVertex].Normal };
+				VertexDataIter = VerticesData.insert(VertexDataIter, std::move(Vertex));
 				VertexDataIter++;
 			}
 
-			MeshData.IndexBegin = IndexData.size();
+			MeshData->IndexBegin = IndicesData.size();
 
-			const auto IndexDataNewSize = IndexData.size() + MeshData.Indices.size();
+			const auto IndexDataNewSize = IndicesData.size() + MeshData->Indices.size();
 			
-			for (auto i = MeshData.IndexBegin; i < IndexDataNewSize; i++)
+			for (auto i = MeshData->IndexBegin; i < IndexDataNewSize; i++)
 			{
-				const auto Index = MeshData.Indices[i - MeshData.IndexBegin];
-				IndexDataIter = IndexData.insert(IndexDataIter, std::move(Index));
+				const auto Index = MeshData->Indices[i - MeshData->IndexBegin];
+				IndexDataIter = IndicesData.insert(IndexDataIter, std::move(Index));
 				IndexDataIter++;
 			}
 
-			StaticMeshesData.insert(std::make_pair(MeshData.Name, MeshData));
+			StaticMeshesData.insert(std::make_pair(MeshData->Name, std::move(MeshesData[iMesh])));
 		}
 
 		// Create vertex buffer 
-		const auto VertexBufferSize = sizeof(SVertexData)*VertexData.size();
+		const auto VertexBufferSize = sizeof(SVertexData)*VerticesData.size();
 
-		VertexBuffer = DX::CreateBuffer(Device, CMDList, VertexBufferSize, VertexData.data(), VertexUploadBuffer);
+		VertexBuffer = DX::CreateBuffer(Device, CMDList, VertexBufferSize, VerticesData.data(), VertexUploadBuffer);
 
 		CMDList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(VertexBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER));
 
@@ -78,8 +84,8 @@ namespace WoodenEngine
 		VertexBufferView.StrideInBytes = sizeof(SVertexData);
 
 		// Create index buffer
-		const auto IndexBufferSize = 2*IndexData.size();
-		IndexBuffer = DX::CreateBuffer(Device, CMDList, IndexBufferSize, IndexData.data(), IndexUploadBuffer);
+		const auto IndexBufferSize = 2*IndicesData.size();
+		IndexBuffer = DX::CreateBuffer(Device, CMDList, IndexBufferSize, IndicesData.data(), IndexUploadBuffer);
 
 		CMDList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(IndexBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDEX_BUFFER));
 
@@ -89,17 +95,60 @@ namespace WoodenEngine
 		IndexBufferView.Format = DXGI_FORMAT_R16_UINT;
 	}
 
+	void FGameResources::AddMaterial(std::unique_ptr<FMaterialData> MaterialData)
+	{
+		if (MaterialData->Name.empty())
+		{
+			throw std::invalid_argument("Material's name must be not empty");
+		}
+
+		MaterialsData[MaterialData->Name] = std::move(MaterialData);
+	}
+
 	void FGameResources::SetDevice(ComPtr<ID3D12Device> Device)
 	{
 		assert(Device != nullptr);
 		this->Device = Device;
 	}
 
-	FMeshData FGameResources::GetMeshData(const std::string& MeshName) const
+	uint64 FGameResources::GetMaterialConstBufferIndex(const std::string& MaterialName) const
+	{
+		auto MaterialDataIt = MaterialsData.find(MaterialName);
+		if (MaterialDataIt == MaterialsData.end())
+		{
+			throw std::invalid_argument("Hasn't found any material data with name - " + MaterialName);
+		}
+		return MaterialDataIt->second->iConstBuffer;
+	}
+
+	const FMaterialData* FGameResources::GetMaterialData(const std::string& MaterialName) const
+	{
+		auto MaterialDataIt = MaterialsData.find(MaterialName);
+		if (MaterialDataIt == MaterialsData.end())
+		{
+			throw std::invalid_argument("Hasn't found any material data with name - " + MaterialName);
+		}
+		return MaterialDataIt->second.get();
+	}
+
+	const FMeshData& FGameResources::GetMeshData(const std::string& MeshName) const
 	{
 		auto MeshDataIt = StaticMeshesData.find(MeshName);
-		assert(MeshDataIt != StaticMeshesData.end());
-		return MeshDataIt->second;
+		if (MeshDataIt == StaticMeshesData.end())
+		{
+			throw std::invalid_argument("Hasn't found any mesh data with name - " + MeshName);
+		}
+		return *MeshDataIt->second;
+	}
+
+	default::uint64 FGameResources::GetNumMaterials() const noexcept
+	{
+		return MaterialsData.size();
+	}
+
+	const FGameResources::FMaterialsData& FGameResources::GetMaterialsData() const noexcept
+	{
+		return MaterialsData;
 	}
 
 	D3D12_VERTEX_BUFFER_VIEW FGameResources::GetVertexBufferView() const noexcept

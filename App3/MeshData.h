@@ -8,19 +8,32 @@ namespace WoodenEngine
 {
 
 	struct FVertex{
-		FVertex()
+		FVertex() = default;
+
+		FVertex(
+			const DirectX::XMFLOAT3& Position,
+			const DirectX::XMFLOAT3& Normal,
+			const DirectX::XMFLOAT3& Tangent,
+			const DirectX::XMFLOAT2& UV = { 0.0f, 0.0f }) :
+			Position(Position),
+			Normal(Normal),
+			Tangent(Tangent),
+			TexC(UV)
 		{}
 
-		FVertex(const float x, const float y, const float z) :
-			Position(x, y, z)
-		{
-		}
-
-		FVertex(DirectX::XMFLOAT3 Position) :
-			Position(Position)
+		FVertex(
+			float PositionX, float PositionY, float PositionZ,
+			float NormalX, float NormalY, float NormalZ,
+			float TangentX, float TangentY, float TangentZ,
+			float u=0.0f, float v=0.0f) :
+			Position(PositionX, PositionY, PositionZ),
+			Normal(NormalX, NormalY, NormalZ)
 		{}
 
 		DirectX::XMFLOAT3 Position;
+		DirectX::XMFLOAT3 Normal;
+		DirectX::XMFLOAT3 Tangent;
+		DirectX::XMFLOAT2 TexC;
 	};
 
 
@@ -34,6 +47,12 @@ namespace WoodenEngine
 	*/
 	struct FMeshData
 	{
+		FMeshData() = default;
+
+		FMeshData(const std::string& Name):
+			Name(Name)
+		{}
+
 		std::string Name;
 		std::vector<FVertex> Vertices;
 		std::vector<uint16> Indices;
@@ -66,7 +85,7 @@ namespace WoodenEngine
 		  * @param NumSubdivisions (uint32)
 		  * @return Mesh data of generated box (DirectXEngine::MeshData)
 		  */
-		FMeshData CreateBox(
+		std::unique_ptr<FMeshData> CreateBox(
 			float Width,
 			float Height,
 			float Depth
@@ -74,14 +93,14 @@ namespace WoodenEngine
 		
 		/** @brief Method generate a sphere with specific dimensions 
 		  * @param Radius (float)
-		  * @param NumVSubdivisions (float)
-		  * @param NumHSubdivisions (float)
+		  * @param NumVSubdivisions (uint32)
+		  * @param NumHSubdivisions (uint32)
 		  * @return Mesh data of generated sphere (DirectXEngine::MeshData)
 		  */
-		FMeshData CreateSphere(
+		std::unique_ptr<FMeshData> CreateSphere(
 			float Radius,
-			float NumVSubdivisions,
-			float NumHSubdivisions
+			uint32 NumVSubdivisions,
+			uint32 NumHSubdivisions
 		) const noexcept;
 	};
 
@@ -107,8 +126,6 @@ namespace WoodenEngine
 		* @param FilePath Path to file (format: *.txt) with mesh data (const std::string &)
 		* @return Parsed mesh data (WoodenEngine::FMeshData)
 		*/
-		FMeshData ParseMeshData(const std::string& FilePath) const;
-	private:
-
+		std::unique_ptr<FMeshData> ParseMeshData(const std::string& FilePath) const;
 	};
 }

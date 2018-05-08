@@ -4,17 +4,18 @@
 #include <iostream>
 #include <vector>
 
+
 #include "EngineSettings.h"
 #include "pch.h"
 
+#include "FrameResource.h"
+#include "GameResources.h"
 
 // Renders Direct3D content on the screen.
 namespace WoodenEngine
 {
 	using namespace DirectX;
 
-	class FFrameResource;
-	class FGameResources;
 	class WObject;
 	class WCamera;
 
@@ -64,7 +65,11 @@ namespace WoodenEngine
 		// Initialize graphics direct command list and command queue
 		void InitCmdQueue();
 		
+		void InitGameResources();
+
 		void AddObjects();
+
+		void AddMaterials();
 
 		// Initialize rtv heaps
 		void InitDescriptorHeap();
@@ -93,8 +98,11 @@ namespace WoodenEngine
 		void WaitForGPU(const uint64 NewFence);
 
 		void UpdateObjectsConstBuffer();
+		
+		void UpdateMaterialsConstBuffer();
 
 		void UpdateFrameConstBuffer();
+
 
 		WCamera* Camera;
 

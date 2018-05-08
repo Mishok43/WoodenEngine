@@ -8,6 +8,8 @@
 
 namespace WoodenEngine
 {
+	struct FMaterialData;
+
 	/*!
 	 * \class BObject
 	 *
@@ -71,6 +73,12 @@ namespace WoodenEngine
 			  */
 			void SetNumDirtyConstBuffers(const uint8 NumDirtyConstBuffers) noexcept;
 
+			/** @brief Sets current material
+			  * @param Material (FMaterialData *)
+			  * @return (void)
+			  */
+			void SetMaterial(const FMaterialData* Material);
+
 			/** @brief Sets absolute world position
 			  * @param Position An absolute world position (const XMFLOAT3 &)
 			  * @return (void)
@@ -131,11 +139,15 @@ namespace WoodenEngine
 			  */
 			void SetIsUpdating(const bool IsUpdating) noexcept;
 
-
 			/** @brief Returns object's world matrix for rendering
 			  * @return World matrix (DirectX::XMMATRIX)
 			  */
 			const XMMATRIX& GetWorldMatrix() const noexcept;
+
+			/** @brief Returns object's world absolute position
+			  * @return World absolution position (DirectX::XMFLOAT3)
+			  */
+			XMFLOAT3 GetWorldPosition() const noexcept;
 
 			/** @brief Returns index in const buffer
 			  * @return Get index in const buffer (default::uint16)
@@ -151,6 +163,11 @@ namespace WoodenEngine
 			  * @return Name of mesh data(const std::string&)
 			  */
 			const std::string& GetMeshName() const;
+
+			/** @brief Returns pointer to material data or nullptr 
+			  * @return (WoodenEngine::FMaterialData*)
+			  */
+			const FMaterialData* GetMaterial() const noexcept;
 
 			/** @brief Returns flag if object is supposed to be rendered to the screen
 			  * @return true - renderable/false - not(bool)
@@ -203,7 +220,10 @@ namespace WoodenEngine
 			std::string MeshName;
 	
 			// Index of object in const buffer
-			uint64 ConstBufferIndex = UINT64_MAX;
+			uint64 iConstBuffer = UINT64_MAX;
+
+			// Current material
+			const FMaterialData* Material = nullptr;
 
 			// Number not updated const buffers
 			uint8 NumDirtyConstBuffers = NMR_SWAP_BUFFERS;

@@ -17,31 +17,57 @@ namespace WoodenEngine
 
 	}
 
-	FMeshData FMeshGenerator::CreateBox(
+	std::unique_ptr<FMeshData> FMeshGenerator::CreateBox(
 		float Width, 
 		float Height, 
 		float Depth
 	) const noexcept
 	{
-		FMeshData BoxMeshData;
-		BoxMeshData.Name = "Box";
+		auto BoxMeshData = std::make_unique<FMeshData>("Box");
 
 		const auto WidthHalf = Width / 2.0f;
 		const auto HeightHalf = Height / 2.0f;
 		const auto DepthHalf = Depth / 2.0f;
 
-		BoxMeshData.Vertices = {
-			{ -WidthHalf, -HeightHalf, -DepthHalf },
-			{ WidthHalf, -HeightHalf, -DepthHalf },
-			{ WidthHalf, HeightHalf, -DepthHalf },
-			{ -WidthHalf, HeightHalf, -DepthHalf },
-			{ -WidthHalf, -HeightHalf, DepthHalf },
-			{ WidthHalf, -HeightHalf, DepthHalf },
-			{ WidthHalf, HeightHalf, DepthHalf },
-			{ -WidthHalf, HeightHalf, DepthHalf }
+		BoxMeshData->Vertices = {
+			// Front face
+			{ -WidthHalf, -HeightHalf, -DepthHalf, 0.0f, 0.0f, -1.0f, 1.0f, 0.0f, 0.0f},
+			{ WidthHalf, -HeightHalf, -DepthHalf, 0.0f, 0.0f, -1.0f, 1.0f, 0.0f, 0.0f},
+			{ WidthHalf, HeightHalf, -DepthHalf , 0.0f, 0.0f, -1.0f, 1.0f, 0.0f, 0.0f},
+			{ -WidthHalf, HeightHalf, -DepthHalf , 0.0f, 0.0f, -1.0f, 1.0f, 0.0f, 0.0f},
+
+			// Back face
+			{ -WidthHalf, -HeightHalf, DepthHalf , 0.0f, 0.0f, 1.0f, -1.0f, 0.0f, 0.0f },
+			{ WidthHalf, -HeightHalf, DepthHalf , 0.0f, 0.0f, 1.0f, -1.0f, 0.0f, 0.0f},
+			{ WidthHalf, HeightHalf, DepthHalf , 0.0f, 0.0f, 1.0f, -1.0f, 0.0f, 0.0f},
+			{ -WidthHalf, HeightHalf, DepthHalf , 0.0f, 0.0f, 1.0f, -1.0f, 0.0f, 0.0f},
+
+			// Top face
+			{ -WidthHalf, HeightHalf, -DepthHalf , 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f },
+			{ WidthHalf, HeightHalf, -DepthHalf , 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f },
+			{ WidthHalf, HeightHalf, DepthHalf , 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f },
+			{ -WidthHalf, HeightHalf, DepthHalf , 0.0f, 1.0f, 0.0f,1.0f, 0.0f, 0.0f },
+
+			// Bottom face
+			{ -WidthHalf, -HeightHalf, -DepthHalf , 0.0f, -1.0f, 0.0f, -1.0f, 0.0f, 0.0f },
+			{ WidthHalf, -HeightHalf, -DepthHalf , 0.0f, -1.0f, 0.0f, -1.0f, 0.0f, 0.0f },
+			{ WidthHalf, -HeightHalf, DepthHalf , 0.0f, -1.0f, 0.0f, -1.0f, 0.0f, 0.0f },
+			{ -WidthHalf, -HeightHalf, DepthHalf , 0.0f, -1.0f, 0.0f, -1.0f, 0.0f, 0.0f },
+
+			// Left face
+			{ -WidthHalf, -HeightHalf, -DepthHalf, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f },
+			{ -WidthHalf, HeightHalf, -DepthHalf , -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f },
+			{ -WidthHalf, HeightHalf, DepthHalf , -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f },
+			{ -WidthHalf, -HeightHalf, DepthHalf , -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f },
+
+			// Right face
+			{ WidthHalf, -HeightHalf, -DepthHalf, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f },
+			{ WidthHalf, HeightHalf, -DepthHalf , 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f },
+			{ WidthHalf, HeightHalf, DepthHalf , 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f },
+			{ WidthHalf, -HeightHalf, DepthHalf , 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f },
 		};
 
-		BoxMeshData.Indices = {
+		BoxMeshData->Indices = {
 			// front face
 			0, 2, 1,
 			0, 3, 2,
@@ -51,88 +77,113 @@ namespace WoodenEngine
 			5, 7, 4,
 
 			// top face
-			3, 7, 6,
-			3, 6, 2,
+			8, 11, 10,
+			8, 10, 9,
 
-			// back face
-			4, 0, 1,
-			4, 1, 5,
+			// bottom face
+			15, 12, 13,
+			15, 13, 14,
 
 			// left face
-			4, 3, 0,
-			4, 7, 3,
+			19, 18, 17,
+			19, 17, 16,
 
 			// right face
-			1, 2, 6,
-			1, 6, 5
+			20, 21, 22,
+			20, 22, 23
 		};
 
 		return BoxMeshData;
 	}
 
-	FMeshData FMeshGenerator::CreateSphere(
+	std::unique_ptr<FMeshData> FMeshGenerator::CreateSphere(
 		float Radius,
-		float NumVSubdivisions,
-		float NumHSubdivisions) const noexcept
+		uint32 NumVSubdivisions,
+		uint32 NumHSubdivisions) const noexcept
 	{
-		FMeshData SphereMeshData;
-		SphereMeshData.Name = "Sphere";
-		SphereMeshData.Vertices.resize((NumVSubdivisions+1)*(NumHSubdivisions));
-		SphereMeshData.Indices.resize((2*2*NumHSubdivisions + (NumVSubdivisions-2)*(NumHSubdivisions)*2)*3);
-		const auto TopVertexY = Radius;
-		const auto BottomVertexY = -Radius;
-		const auto VAngleOffset = DirectX::XM_PI / NumVSubdivisions;
-		const auto HAngleOffset = DirectX::XM_2PI / NumHSubdivisions;
+		auto SphereMeshData = std::make_unique<FMeshData>("Sphere");
+		SphereMeshData->Vertices.resize(2 + (NumVSubdivisions - 1)*(NumHSubdivisions + 1));
+		SphereMeshData->Indices.resize(NumHSubdivisions*NumVSubdivisions * 2 * 3);
 
+		FVertex TopVertex = { 0.0f, Radius, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f };
+		FVertex BottomVertex = { 0.0f, -Radius, 0.0f, 0.0f, -1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f };
 		
-		uint16 iVertex = 0;
-		
-		// Add top vertices
-		for (auto iHSubdivision = 0; iHSubdivision < NumHSubdivisions; iHSubdivision++, iVertex++)
-		{
-			SphereMeshData.Vertices[iVertex] = { 0.0f, TopVertexY, 0.0f };
-		}
+		SphereMeshData->Vertices[0] = std::move(TopVertex);
 
-		// Add intermediate vertices
-		for (auto iVSubdivision = 0; iVSubdivision < NumVSubdivisions-1; ++iVSubdivision)
-		{
-			const auto VAngle = DirectX::XM_PIDIV2 - (iVSubdivision + 1)*VAngleOffset;
-			const auto SubCircleRadius = cos(VAngle)*Radius;
-			const auto VertexY = sin(VAngle)*Radius;
+		float PhiStep = XM_PI / NumVSubdivisions;
+		float ThetaStep = 2.0f*XM_PI / NumHSubdivisions;
 
-			for (auto iHSubdivision = 0; iHSubdivision < NumHSubdivisions; ++iHSubdivision, ++iVertex)
+		uint64 iVertex = 1;
+		for (auto iVSubdivision = 1; iVSubdivision <= NumVSubdivisions - 1; ++iVSubdivision)
+		{
+			float Phi = PhiStep * iVSubdivision;
+
+			for (auto iHSubdivision = 0; iHSubdivision <= NumHSubdivisions; ++iHSubdivision, ++iVertex)
 			{
-				const auto HAngle = (iHSubdivision + 1)*HAngleOffset;
-				const auto VertexX = cos(HAngle)*SubCircleRadius;
-				const auto VertexZ = sin(HAngle)*SubCircleRadius;
-				SphereMeshData.Vertices[iVertex] = { VertexX, VertexY, VertexZ };
+				float Theta = ThetaStep*iHSubdivision;
+
+				const float SinPhi = sinf(Phi);
+				const float CosPhi = cosf(Phi);
+				const float SinTheta= sinf(Theta);
+				const float CosTheta = cosf(Theta);
+
+				FVertex Vertex;
+
+				// Convert Spherical coordinates to Cartesian
+				Vertex.Position.x = Radius*SinPhi*CosTheta;
+				Vertex.Position.y = Radius*CosPhi;
+				Vertex.Position.z = Radius*SinPhi*SinTheta;
+
+				// Partial derivative of Position with respect to Theta
+				Vertex.Tangent.x = -Radius*SinPhi*SinTheta;
+				Vertex.Tangent.y = 0.0f;
+				Vertex.Tangent.z = Radius*SinPhi*CosTheta;
+
+				// Normalize tangent vector and store it as tangent vector
+				XMStoreFloat3(&Vertex.Tangent, XMVector3Normalize(XMLoadFloat3(&Vertex.Tangent)));
+
+				// Normalize position vector and store it as normal vector
+				XMStoreFloat3(&Vertex.Normal, XMVector3Normalize(XMLoadFloat3(&Vertex.Position)));
+
+				SphereMeshData->Vertices[iVertex] = std::move(Vertex);
 			}
 		}
 
-		// Add bottom vertices
-		for (auto iHSubdivision = 0; iHSubdivision < NumHSubdivisions; iHSubdivision++, iVertex++)
+		SphereMeshData->Vertices[iVertex] = std::move(BottomVertex);
+
+
+		int iIndex = 0;
+		for (auto iVertex = 1; iVertex <= NumHSubdivisions; ++iVertex, iIndex+=3)
 		{
-			SphereMeshData.Vertices[iVertex] = { 0.0f, BottomVertexY, 0.0f };
+			SphereMeshData->Indices[iIndex] = 0;
+			SphereMeshData->Indices[iIndex + 1] = iVertex + 1;
+			SphereMeshData->Indices[iIndex + 2] = iVertex;
 		}
 
-		// Add indices
-		uint16 VertexIndex = 0;
-		for (auto iVSubdivision = 1; iVSubdivision < NumVSubdivisions+1; ++iVSubdivision)
-		{
-			for (auto iHSubdivision = 0; iHSubdivision < NumHSubdivisions; ++iHSubdivision, VertexIndex+=6)
-			{
-				const auto TopLeftVIndex = (iVSubdivision - 1)*NumHSubdivisions +iHSubdivision;
-				const auto TopRightVIndex = TopLeftVIndex+1;
-				const auto DownLeftVIndex = iVSubdivision * NumHSubdivisions + iHSubdivision;
-				const auto DownRightVIndex = DownLeftVIndex + 1;
-				SphereMeshData.Indices[VertexIndex] = DownLeftVIndex;
-				SphereMeshData.Indices[VertexIndex+1] = TopLeftVIndex;
-				SphereMeshData.Indices[VertexIndex+2] = TopRightVIndex;
 
-				SphereMeshData.Indices[VertexIndex+3] = DownLeftVIndex;
-				SphereMeshData.Indices[VertexIndex+4] = TopRightVIndex;
-				SphereMeshData.Indices[VertexIndex+5] = DownRightVIndex;
+		const auto NumVertexInRing = NumHSubdivisions + 1;
+		for (auto iVSubdivision = 0; iVSubdivision < NumVSubdivisions-2; ++iVSubdivision)
+		{
+			for (auto iHSubdivision = 0; iHSubdivision < NumHSubdivisions; ++iHSubdivision, iIndex +=6)
+			{
+
+				SphereMeshData->Indices[iIndex] = 1 + iVSubdivision * NumVertexInRing + iHSubdivision;
+				SphereMeshData->Indices[iIndex+1] = 1 + iVSubdivision * NumVertexInRing + iHSubdivision+1;
+				SphereMeshData->Indices[iIndex+2] = 1 + (iVSubdivision+1) * NumVertexInRing + iHSubdivision;
+				
+				SphereMeshData->Indices[iIndex+3] = 1 + (iVSubdivision+1) * NumVertexInRing+ iHSubdivision;
+				SphereMeshData->Indices[iIndex+4] = 1 + iVSubdivision * NumVertexInRing+ iHSubdivision+1;
+				SphereMeshData->Indices[iIndex+5] = 1 + (iVSubdivision+1) * NumVertexInRing+ iHSubdivision+1;
 			}
+		}
+
+		const auto iBottomVertex = SphereMeshData->Vertices.size() - 1;
+		const auto iLastRingBaseVertex = iBottomVertex - NumVertexInRing;
+		for (auto iVertex = 0; iVertex < NumHSubdivisions; ++iVertex, iIndex += 3)
+		{
+			SphereMeshData->Indices[iIndex] = iBottomVertex;
+			SphereMeshData->Indices[iIndex + 1] = iLastRingBaseVertex + iVertex;
+			SphereMeshData->Indices[iIndex + 2] = iLastRingBaseVertex + iVertex+1;
 		}
 
 		return SphereMeshData;
@@ -156,9 +207,10 @@ namespace WoodenEngine
 		return elems;
 	}
 
-	FMeshData FMeshParser::ParseMeshData(const std::string& FilePath) const
+	std::unique_ptr<FMeshData> FMeshParser::ParseMeshData(const std::string& FilePath) const
 	{
-		auto MeshData = FMeshData{};
+		// use smart pointer for preventing memory leak if exception is thrown
+		auto MeshData = std::make_unique<FMeshData>();
 
 		std::ifstream File;
 		File.open(FilePath, std::ios_base::in);
@@ -176,16 +228,16 @@ namespace WoodenEngine
 		std::string StrNumVertex;
 		std::getline(File, StrNumVertex);
 
-		MeshData.Vertices.reserve(std::stoi(StrNumVertex));		
+		MeshData->Vertices.reserve(std::stoi(StrNumVertex));		
 		
 		std::string StrNumIndex;
 		std::getline(File, StrNumIndex);
 
-		MeshData.Indices.reserve(std::stoi(StrNumIndex));
+		MeshData->Indices.reserve(std::stoi(StrNumIndex));
 
-		auto VerticesIter = MeshData.Vertices.cend();
+		auto VerticesIter = MeshData->Vertices.cend();
 		std::string StrVertexData;
-		for (auto iVertex = 0; iVertex < MeshData.Vertices.capacity(); ++iVertex)
+		for (auto iVertex = 0; iVertex < MeshData->Vertices.capacity(); ++iVertex)
 		{
 			std::getline(File, StrVertexData);
 			auto VertexData = split(StrVertexData, ' ');
@@ -195,24 +247,24 @@ namespace WoodenEngine
 			Vertex.Position.y = std::stof(std::move(VertexData[1]));
 			Vertex.Position.z = std::stof(std::move(VertexData[2]));
 
-			VerticesIter = MeshData.Vertices.insert(VerticesIter, std::move(Vertex));
+			VerticesIter = MeshData->Vertices.insert(VerticesIter, std::move(Vertex));
 			VerticesIter++;
 		}
 
-		auto IndicesIter = MeshData.Indices.cend();
+		auto IndicesIter = MeshData->Indices.cend();
 		std::string StrIndexData;
-		for (auto iIndex = 0; iIndex < MeshData.Indices.capacity()/3; ++iIndex)
+		for (auto iIndex = 0; iIndex < MeshData->Indices.capacity()/3; ++iIndex)
 		{
 			std::getline(File, StrIndexData);
 			auto IndexData = split(StrIndexData, ' ');
 
-			IndicesIter = MeshData.Indices.insert(IndicesIter, std::stoi(std::move(IndexData[0])));
+			IndicesIter = MeshData->Indices.insert(IndicesIter, std::stoi(std::move(IndexData[0])));
 			IndicesIter++;
 
-			IndicesIter = MeshData.Indices.insert(IndicesIter, std::stoi(std::move(IndexData[1])));
+			IndicesIter = MeshData->Indices.insert(IndicesIter, std::stoi(std::move(IndexData[1])));
 			IndicesIter++;
 
-			IndicesIter = MeshData.Indices.insert(IndicesIter, std::stoi(std::move(IndexData[2])));
+			IndicesIter = MeshData->Indices.insert(IndicesIter, std::stoi(std::move(IndexData[2])));
 			IndicesIter++;
 		}
 

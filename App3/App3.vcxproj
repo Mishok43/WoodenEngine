@@ -202,6 +202,7 @@
     <ClInclude Include="Common\DirectXHelper.h" />
     <ClInclude Include="FrameResource.h" />
     <ClInclude Include="GameResources.h" />
+    <ClInclude Include="MaterialData.h" />
     <ClInclude Include="MathHelper.h" />
     <ClInclude Include="MeshData.h" />
     <ClInclude Include="pch.h" />

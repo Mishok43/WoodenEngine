@@ -48,7 +48,6 @@ namespace WoodenEngine
 
 		// View matrix for rendering
 		XMMATRIX ViewMatrix;
-
 		
 		/** @brief Recompute view matrix based on XAngle, ZAngle, ViewRadius for rendering
 		  * @return (void)

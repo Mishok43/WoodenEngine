@@ -63,7 +63,7 @@ namespace WoodenEngine
 	void WObject::UpdateWorldMatrix() noexcept 
 	{
 		WorldMatrix = 
-			DirectX::XMMatrixScalingFromVector(XMLoadFloat3(&Scale))*
+			DirectX::XMMatrixScalingFromVector(XMLoadFloat4(&Scale))*
 			DirectX::XMMatrixRotationRollPitchYawFromVector(XMLoadFloat3(&Rotation))*
 			DirectX::XMMatrixTranslationFromVector(XMLoadFloat3(&Position));
 	}
@@ -83,6 +83,16 @@ namespace WoodenEngine
 		this->NumDirtyConstBuffers = NumDirtyConstBuffers;
 	}
 
+	void WObject::SetMaterial(const FMaterialData* Material)
+	{
+		if (Material == nullptr)
+		{
+			throw std::invalid_argument("Material must be not nullptr");
+		}
+
+		this->Material = Material;
+	}
+
 	void WObject::SetIsUpdating(const bool IsUpdating) noexcept
 	{
 		bIsUpdating = IsUpdating;
@@ -95,13 +105,13 @@ namespace WoodenEngine
 
 	void WObject::SetConstBufferIndex(const uint64 Index) noexcept
 	{
-		ConstBufferIndex = Index;
+		iConstBuffer = Index;
 	}
 
 	uint64 WObject::GetConstBufferIndex() const
 	{
-		assert(ConstBufferIndex != UINT64_MAX); // ConstBufferIndex must be set
-		return ConstBufferIndex;
+		assert(iConstBuffer != UINT64_MAX); // ConstBufferIndex must be set
+		return iConstBuffer;
 	}
 
 	uint8 WObject::GetNumDirtyConstBuffers() const noexcept
@@ -115,9 +125,19 @@ namespace WoodenEngine
 		return MeshName;
 	}
 
+	const FMaterialData* WObject::GetMaterial() const noexcept
+	{
+		return Material;
+	}
+
 	const XMMATRIX& WObject::GetWorldMatrix() const noexcept
 	{
 		return WorldMatrix;
+	}
+
+	XMFLOAT3 WObject::GetWorldPosition() const noexcept
+	{
+		return Position;
 	}
 
 	bool WObject::IsUpdating() const noexcept

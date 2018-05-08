@@ -64,6 +64,7 @@
     <ClInclude Include="EngineSettings.h" />
     <ClInclude Include="GameMain.h" />
     <ClInclude Include="Camera.h" />
+    <ClInclude Include="MaterialData.h" />
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest" />

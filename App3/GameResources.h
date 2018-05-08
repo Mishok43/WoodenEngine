@@ -4,11 +4,13 @@
 #include <string>
 #include <unordered_map>
 
-#include "MeshData.h"
 #include "ShaderStructures.h"
+#include "MeshData.h"
+#include "MaterialData.h"
 
 namespace WoodenEngine
 {
+
 	/*!
 	 * \class FGameResources
 	 *
@@ -20,6 +22,12 @@ namespace WoodenEngine
 	class FGameResources
 	{
 	public: 
+		using FMaterialsData = 
+			std::unordered_map<std::string, std::unique_ptr<FMaterialData>>;
+
+		using FMeshesData =
+			std::unordered_map<std::string, std::unique_ptr<FMeshData>>;
+
 		FGameResources();
 		FGameResources(ComPtr<ID3D12Device> Device);
 		~FGameResources();
@@ -36,20 +44,52 @@ namespace WoodenEngine
 		void SetDevice(ComPtr<ID3D12Device> Device);
 
 		/** @brief Method load an array of meshes to video and cpu memory. 
-		  *	(The Device must be set!)
-		  * @param MeshesData An array of meshes (const std::vector<FMeshData> &)
+		  *	(The Device must be set!) 
+		  * @param MeshesData An array of meshes.
+		  * It'll have only nullptrs after executing function (const std::vector<FMeshData> &&)
 		  * @param CmdList A Graphics Command List for comitting vertex and indices resources
 		  * @return (void)
 		  */
 		void LoadMeshes(
-			const std::vector<FMeshData>& MeshesData,
+			std::vector<std::unique_ptr<FMeshData>>&& MeshesData,
 			ComPtr<ID3D12GraphicsCommandList> CmdList);
+		
+		/** @brief Adds material data to cache for future access
+		  * @param MaterialData Unique ptr to material data (std::unique_ptr<FMaterialData>)
+		  * @return (void)
+		  */
+		void AddMaterial(std::unique_ptr<FMaterialData> MaterialData);
 
-		/** @brief Return mesh data by name. Throws exception if no mesh data is associated with the name 
+
+		/** @brief Finds a material data by name and returns it's iConstBuffer
+		  * @param MaterialName (const std::string &)
+		  * @return Const Buffer Index (default::uint64)
+		  */
+		uint64 GetMaterialConstBufferIndex(const std::string& MaterialName) const;
+
+		/** @brief Finds a material data by name and returns it
+		  * @param MaterialName (const std::string &)
+		  * @return Material Data(const WoodenEngine::FMaterialData&)
+		  */
+		const FMaterialData* GetMaterialData(const std::string& MaterialName) const;
+
+		/** @brief Find a mesh data by name and returns it.
+		  * Throws exception if no mesh data is associated with the name 
 		  * @param MeshName Name of mesh data(const std::string &)
 		  * @return Mesh data associated with the name (WoodenEngine::FMeshData)
 		  */
-		FMeshData GetMeshData(const std::string& MeshName) const;
+		const FMeshData& GetMeshData(const std::string& MeshName) const;
+
+		/** @brief Returns number of materils
+		  * @return Number of materials (default::uint64)
+		  */
+		uint64 GetNumMaterials() const noexcept;
+
+		/** @brief Returns materials data
+		  * @return (const std::unordered_map<std::string, WoodenEngine::FMaterialData>&)
+		  */
+		const FMaterialsData& GetMaterialsData() const noexcept;
+
 
 		/** @brief Returns vertex buffer view
 		  * @return Vertex buffer view (D3D12_VERTEX_BUFFER_VIEW)
@@ -62,13 +102,16 @@ namespace WoodenEngine
 		D3D12_INDEX_BUFFER_VIEW GetIndexBufferView() const noexcept;
 	private:
 		// Hash-Table consists of static meshes data, where key is a mesh's name
-		std::unordered_map<std::string, const FMeshData> StaticMeshesData;
+		FMeshesData StaticMeshesData;
+		
+		// Hash-table consists of materials data, where key is a material's name
+		FMaterialsData MaterialsData;
 
 		// Dynamic array of all static meshes' vertices 
-		std::vector<SVertexData> VertexData;
+		std::vector<SVertexData> VerticesData;
 
 		// Dynamic array of all static meshes' indices
-		std::vector<uint16> IndexData;
+		std::vector<uint16> IndicesData;
 		
 		// DX12 Device
 		ComPtr<ID3D12Device> Device;
