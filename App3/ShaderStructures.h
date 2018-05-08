@@ -36,14 +36,14 @@ namespace WoodenEngine
 		
 		XMFLOAT4X4 ViewProjMatrix;
 
-		// 16 - max lights amount
-		SLightData Lights[16];
-
 		XMFLOAT3 EyePosition;
-
 		float GameTime;
 
 		XMFLOAT4 AmbientLight;
+		
+		// 16 - max lights amount
+		SLightData Lights[16];
+
 	};
 
 	struct SMaterialData
@@ -59,7 +59,6 @@ namespace WoodenEngine
 	struct SObjectData
 	{
 		XMFLOAT4X4 WorldMatrix; // 64B
-		XMFLOAT4 Color; // 16B
 		float Time; // 4B
 	}; // 84B
 

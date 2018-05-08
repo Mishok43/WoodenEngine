@@ -226,25 +226,25 @@ namespace WoodenEngine
 		auto SphereMesh = MeshGenerator->CreateSphere(1.0f, 20.0f, 20.0f);
 
 		auto MeshParser = std::make_unique<FMeshParser>();
-		auto SkullMesh = MeshParser->ParseMeshData("Assets\\Models\\skull.txt");
-		SkullMesh->Name = "Skull";
+	//	auto SkullMesh = MeshParser->ParseMeshData("Assets\\Models\\skull.txt");
+	//	SkullMesh->Name = "Skull";
 
 		const auto BoxMeshName = BoxMesh->Name;
 		const auto SphereMeshName = SphereMesh->Name;
-		const auto SkullMeshName = SkullMesh->Name;
+	//	const auto SkullMeshName = SkullMesh->Name;
 
 		std::vector<std::unique_ptr<FMeshData>> Meshes;
-		Meshes.resize(3);
+		Meshes.resize(2);
 		Meshes[0] = std::move(BoxMesh);
 		Meshes[1] = std::move(SphereMesh);
-		Meshes[2] = std::move(SkullMesh);
+	//	Meshes[2] = std::move(SkullMesh);
 
 		GameResources->LoadMeshes(std::move(Meshes), CmdList);
 
 		// Create objects
 		auto* BoxObject = new WObject(BoxMeshName);
 		BoxObject->SetConstBufferIndex(0);
-		BoxObject->SetPosition(1.5f, 0.0f, 0.0f);
+		//BoxObject->SetPosition(1.5f, 0.0f, 0.0f);
 		BoxObject->SetColor({ 1.0f, 0.0f, 0.0f, 1.0f });
 		BoxObject->SetMaterial(GameResources->GetMaterialData("grass"));
 		Objects.push_back(BoxObject);
@@ -468,8 +468,6 @@ namespace WoodenEngine
 				SObjectData ObjectShaderData;
 				XMStoreFloat4x4(&ObjectShaderData.WorldMatrix, XMMatrixTranspose(WorldMatrix));
 
-				ObjectShaderData.Color = Object->GetColor();
-
 				ObjectsBuffer->CopyData(Object->GetConstBufferIndex(), ObjectShaderData);
 
 				Object->SetNumDirtyConstBuffers(Object->GetNumDirtyConstBuffers() - 1);
@@ -521,7 +519,7 @@ namespace WoodenEngine
 
 
 		CurrFrameResource->FrameDataBuffer->CopyData(0, ConstFrameData);
-	}
+}
 
 	void WoodenEngine::FGameMain::MouseMoved(const float dx, const float dy) noexcept
 	{

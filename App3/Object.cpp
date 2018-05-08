@@ -63,7 +63,7 @@ namespace WoodenEngine
 	void WObject::UpdateWorldMatrix() noexcept 
 	{
 		WorldMatrix = 
-			DirectX::XMMatrixScalingFromVector(XMLoadFloat4(&Scale))*
+			DirectX::XMMatrixScalingFromVector(XMLoadFloat3(&Scale))*
 			DirectX::XMMatrixRotationRollPitchYawFromVector(XMLoadFloat3(&Rotation))*
 			DirectX::XMMatrixTranslationFromVector(XMLoadFloat3(&Position));
 	}
