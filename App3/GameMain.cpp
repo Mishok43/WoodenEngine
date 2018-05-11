@@ -43,6 +43,7 @@ namespace WoodenEngine
 
 		BuildFrameResources();
 		InitConstBuffersViews();
+		InitTexturesViews();
 
 		BuildRootSignature();
 		InitShaders();
@@ -136,7 +137,7 @@ namespace WoodenEngine
 
 				Device->CreateConstantBufferView(&ConstBufferViewDesc, CBVDescriptorHandle);
 
-				CBVDescriptorHandle.Offset(1, CBVDescriptorHandleIncrementSize);
+				CBVDescriptorHandle.Offset(1, CBVSRVDescriptorHandleIncrementSize);
 			}
 		}
 
@@ -153,7 +154,44 @@ namespace WoodenEngine
 
 			Device->CreateConstantBufferView(&ConstBufferViewDesc, CBVDescriptorHandle);
 
-			CBVDescriptorHandle.Offset(1, CBVDescriptorHandleIncrementSize);
+			CBVDescriptorHandle.Offset(1, CBVSRVDescriptorHandleIncrementSize);
+		}
+	}
+
+	void FGameMain::AddTextures()
+	{
+		auto BasePath = static_cast<std::wstring>(L"Assets\\Textures\\");
+
+		GameResources->LoadTexture(BasePath + L"WoodCrate01.dds", "crate", CmdList);
+		GameResources->LoadTexture(BasePath + L"water1.dds", "water", CmdList);
+		GameResources->LoadTexture(BasePath + L"grass.dds", "grass", CmdList);
+	}
+
+
+	void FGameMain::InitTexturesViews()
+	{
+		CD3DX12_CPU_DESCRIPTOR_HANDLE SRVDescriptorHandle(
+			SRVDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
+
+		const auto& TexturesData = GameResources->GetTexturesData();
+		uint32 iTexture = 0;
+		for (auto TexturesDataIter = TexturesData.cbegin(); TexturesDataIter != TexturesData.cend(); ++TexturesDataIter, ++iTexture)
+		{
+			auto TextureData = TexturesDataIter->second.get();
+		
+			D3D12_SHADER_RESOURCE_VIEW_DESC SRVDesc = {};
+			SRVDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+			SRVDesc.Format = TextureData->Resource->GetDesc().Format;
+			SRVDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+			SRVDesc.Texture2D.MostDetailedMip = 0;
+			SRVDesc.Texture2D.MipLevels = TextureData->Resource->GetDesc().MipLevels;
+			SRVDesc.Texture2D.ResourceMinLODClamp = 0.0f;
+
+			Device->CreateShaderResourceView(TextureData->Resource.Get(), &SRVDesc, SRVDescriptorHandle);
+
+			TextureData->iSRVHeap = iTexture;
+
+			SRVDescriptorHandle.Offset(CBVSRVDescriptorHandleIncrementSize);
 		}
 	}
 
@@ -175,7 +213,7 @@ namespace WoodenEngine
 
 		RTVDescriptorHandleIncrementSize = Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 		DSVDescriptorHandleIncrementSize = Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
-		CBVDescriptorHandleIncrementSize = Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		CBVSRVDescriptorHandleIncrementSize = Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
 		DX::ThrowIfFailed(Device->CreateFence(FenceValue, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&Fence)));
 
@@ -194,78 +232,108 @@ namespace WoodenEngine
 
 	void FGameMain::InitGameResources()
 	{
-		GameResources = std::make_unique<FGameResources>(Device);
+		GameResources = std::make_unique<FGameResource>(Device);
 
+		AddTextures();
 		AddMaterials();
 		AddObjects();
 	}
 
 	void FGameMain::AddMaterials()
 	{
+		uint64 iConstBuffer = 0;
+
 		auto GrassMaterial = std::make_unique<FMaterialData>("grass");
-		GrassMaterial->iConstBuffer = 0;
-		GrassMaterial->DiffuseAlbedo = { 0.2f, 0.6f, 0.6f, 1.0f };
+		GrassMaterial->iConstBuffer = iConstBuffer;
 		GrassMaterial->FresnelR0 = { 0.01f, 0.01f, 0.01f };
 		GrassMaterial->Roughness = 0.125f;
+		GrassMaterial->DiffuseTexture = GameResources->GetTextureData("grass");
+		GameResources->AddMaterial(std::move(GrassMaterial));
+		++iConstBuffer;
 
 		auto WaterMaterial = std::make_unique<FMaterialData>("water");
-		WaterMaterial->iConstBuffer = 1;
-		WaterMaterial->DiffuseAlbedo = { 0.0f, 0.2f, 0.6f, 1.0f };
+		WaterMaterial->iConstBuffer = iConstBuffer;
 		WaterMaterial->FresnelR0 = { 0.1f, 0.1f, 0.1f };
 		WaterMaterial->Roughness = 0.0f;
-
-		GameResources->AddMaterial(std::move(GrassMaterial));
+		WaterMaterial->DiffuseTexture = GameResources->GetTextureData("water");
 		GameResources->AddMaterial(std::move(WaterMaterial));
+		++iConstBuffer;
+
+		auto SkullMaterial = std::make_unique<FMaterialData>("skull");
+		SkullMaterial->iConstBuffer = iConstBuffer;
+		SkullMaterial->FresnelR0 = { 0.05f, 0.05f, 0.05f };
+		SkullMaterial->Roughness = 0.4f;
+		SkullMaterial->DiffuseTexture = GameResources->GetTextureData("grass");
+		GameResources->AddMaterial(std::move(SkullMaterial));
+		++iConstBuffer;
+
+		auto CrateMaterial = std::make_unique<FMaterialData>("crate");
+		CrateMaterial->iConstBuffer = iConstBuffer;
+		CrateMaterial->FresnelR0 = { 0.05f, 0.05f, 0.05f };
+		CrateMaterial->Roughness = 0.85f;
+		CrateMaterial->DiffuseTexture = GameResources->GetTextureData("crate");
+		GameResources->AddMaterial(std::move(CrateMaterial));
+		++iConstBuffer;
 	}
 
 	void FGameMain::AddObjects()
 	{
 		// Build and load static meshes
 		auto MeshGenerator = std::make_unique<FMeshGenerator>();
+		
 		auto BoxMesh = MeshGenerator->CreateBox(1.0f, 1.0f, 1.0f);
+		
+		auto PlaneMesh = MeshGenerator->CreateGrid(15.0f, 15.0f, 40, 40);
 		auto SphereMesh = MeshGenerator->CreateSphere(1.0f, 20.0f, 20.0f);
 
 		auto MeshParser = std::make_unique<FMeshParser>();
-	//	auto SkullMesh = MeshParser->ParseMeshData("Assets\\Models\\skull.txt");
-	//	SkullMesh->Name = "Skull";
+		auto SkullMesh = MeshParser->ParseTxtData("Assets\\Models\\skull.txt");
+		SkullMesh->Name = "Skull";
 
 		const auto BoxMeshName = BoxMesh->Name;
 		const auto SphereMeshName = SphereMesh->Name;
-	//	const auto SkullMeshName = SkullMesh->Name;
+		const auto SkullMeshName = SkullMesh->Name;
+		const auto PlaneMeshName = PlaneMesh->Name;
 
 		std::vector<std::unique_ptr<FMeshData>> Meshes;
-		Meshes.resize(2);
+		Meshes.resize(4);
 		Meshes[0] = std::move(BoxMesh);
 		Meshes[1] = std::move(SphereMesh);
-	//	Meshes[2] = std::move(SkullMesh);
+		Meshes[2] = std::move(SkullMesh);
+		Meshes[3] = std::move(PlaneMesh);
 
 		GameResources->LoadMeshes(std::move(Meshes), CmdList);
 
+
+		auto* WaterObject = new WObject(PlaneMeshName);
+
+		XMFLOAT4X4 c;
+		XMStoreFloat4x4(&c, XMMatrixScaling(5.0f, 5.0f, 1.0f));
+		WaterObject->SetMaterialTrasnform(c);
+		WaterObject->SetPosition(0, 0, 0);
+		WaterObject->SetConstBufferIndex(0);
+		WaterObject->SetMaterial(GameResources->GetMaterialData("water"));
+		Objects.push_back(WaterObject);
+
 		// Create objects
 		auto* BoxObject = new WObject(BoxMeshName);
-		BoxObject->SetConstBufferIndex(0);
-		//BoxObject->SetPosition(1.5f, 0.0f, 0.0f);
-		BoxObject->SetColor({ 1.0f, 0.0f, 0.0f, 1.0f });
-		BoxObject->SetMaterial(GameResources->GetMaterialData("grass"));
+		BoxObject->SetConstBufferIndex(1);
+		BoxObject->SetPosition(-5.0f, 0.5f, 0.0f);
+		BoxObject->SetMaterial(GameResources->GetMaterialData("crate"));
 		Objects.push_back(BoxObject);
 
 		auto* SphereObject = new WObject(SphereMeshName);
-		SphereObject->SetConstBufferIndex(1);
-		SphereObject->SetPosition(2.5f, 2.0f, 2.0f);
-		SphereObject->SetScale(1.25f, 1.25f, 1.25f);
-		SphereObject->SetColor({ 0.0f, 1.0f, 0.0f, 1.0f });
-		SphereObject->SetMaterial(GameResources->GetMaterialData("water"));
+		SphereObject->SetConstBufferIndex(2);
+		SphereObject->SetPosition(2.5f, 0, 2.0f);
+		SphereObject->SetMaterial(GameResources->GetMaterialData("crate"));
 		Objects.push_back(SphereObject);
-
-		/*
+	
 		auto* SkullObject = new WObject(SkullMeshName);
-		SkullObject->SetConstBufferIndex(2);
-		SkullObject->SetPosition({ -1.5f, -1.5f, 0.0f });
+		SkullObject->SetConstBufferIndex(3);
+		SkullObject->SetPosition({ -1.5f, 0, 0.0f });
 		SkullObject->SetScale(0.5f, 0.5f, 0.5f);
-		SkullObject->SetColor({ 0.0f, 0.0f, 1.0f, 1.0f });
-		SkullObject->SetMaterial(GameResources->GetMaterialData("grass"));
+		SkullObject->SetMaterial(GameResources->GetMaterialData("skull"));
 		Objects.push_back(SkullObject);
-		*/
 
 		Camera = new WCamera(Window->Bounds.Width, Window->Bounds.Height);
 		Objects.push_back(Camera);
@@ -289,13 +357,21 @@ namespace WoodenEngine
 
 		DX::ThrowIfFailed(Device->CreateDescriptorHeap(&dsvDescriptorHeapDesc, IID_PPV_ARGS(&DSVDescriptorHeap)));
 
+
 		D3D12_DESCRIPTOR_HEAP_DESC cbvDescriptorHeapDesc = {};
 		cbvDescriptorHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 		cbvDescriptorHeapDesc.NodeMask = 0;
 		cbvDescriptorHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 		cbvDescriptorHeapDesc.NumDescriptors = NMR_SWAP_BUFFERS * (Objects.size() + 1); // frame's cbv = cube_cbv(world matrix) + const_cbv (viewProjMatrix + Game Time)
 		DX::ThrowIfFailed(Device->CreateDescriptorHeap(&cbvDescriptorHeapDesc, IID_PPV_ARGS(&CBVDescriptorHeap)));
+
+		D3D12_DESCRIPTOR_HEAP_DESC srvDescriptorHeapDesc = {};
+		srvDescriptorHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+		srvDescriptorHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+		srvDescriptorHeapDesc.NumDescriptors = GameResources->GetNumTexturesData();
+		DX::ThrowIfFailed(Device->CreateDescriptorHeap(&srvDescriptorHeapDesc, IID_PPV_ARGS(&SRVDescriptorHeap)));
 	}
+
 
 	void FGameMain::InitCmdQueue()
 	{
@@ -364,39 +440,102 @@ namespace WoodenEngine
 		Shaders["opaquePS"] = DX::CompileShader(L"Shaders\\color.hlsl", nullptr, "PS", "ps_5_0");
 	}
 
+	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> FGameMain::GetStaticSamplers()
+	{
+		// Applications usually only need a handful of samplers.  So just define them all up front
+		// and keep them available as part of the root signature.  
+
+		const CD3DX12_STATIC_SAMPLER_DESC pointWrap(
+			0, // shaderRegister
+			D3D12_FILTER_MIN_MAG_MIP_POINT, // filter
+			D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressU
+			D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressV
+			D3D12_TEXTURE_ADDRESS_MODE_WRAP); // addressW
+
+		const CD3DX12_STATIC_SAMPLER_DESC pointClamp(
+			1, // shaderRegister
+			D3D12_FILTER_MIN_MAG_MIP_POINT, // filter
+			D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressU
+			D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressV
+			D3D12_TEXTURE_ADDRESS_MODE_CLAMP); // addressW
+
+		const CD3DX12_STATIC_SAMPLER_DESC linearWrap(
+			2, // shaderRegister
+			D3D12_FILTER_MIN_MAG_MIP_LINEAR, // filter
+			D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressU
+			D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressV
+			D3D12_TEXTURE_ADDRESS_MODE_WRAP); // addressW
+
+		const CD3DX12_STATIC_SAMPLER_DESC linearClamp(
+			3, // shaderRegister
+			D3D12_FILTER_MIN_MAG_MIP_LINEAR, // filter
+			D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressU
+			D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressV
+			D3D12_TEXTURE_ADDRESS_MODE_CLAMP); // addressW
+
+		const CD3DX12_STATIC_SAMPLER_DESC anisotropicWrap(
+			4, // shaderRegister
+			D3D12_FILTER_ANISOTROPIC, // filter
+			D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressU
+			D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressV
+			D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressW
+			0.0f,                             // mipLODBias
+			8);                               // maxAnisotropy
+
+		const CD3DX12_STATIC_SAMPLER_DESC anisotropicClamp(
+			5, // shaderRegister
+			D3D12_FILTER_ANISOTROPIC, // filter
+			D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressU
+			D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressV
+			D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressW
+			0.0f,                              // mipLODBias
+			8);                                // maxAnisotropy
+
+		return {
+			pointWrap, pointClamp,
+			linearWrap, linearClamp,
+			anisotropicWrap, anisotropicClamp };
+	}
+
 
 	void FGameMain::BuildRootSignature()
 	{
 		CD3DX12_DESCRIPTOR_RANGE range1;
 		range1.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0);
 
+		// per object data
 		CD3DX12_ROOT_PARAMETER parameter1;
-		parameter1.InitAsDescriptorTable(1, &range1);
+		parameter1.InitAsConstantBufferView(0);
 
+		// material data
 		CD3DX12_ROOT_PARAMETER parameter2;
 		parameter2.InitAsConstantBufferView(1);
 
+		// frame data
 		CD3DX12_DESCRIPTOR_RANGE range3;
 		range3.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 2);
 
 		CD3DX12_ROOT_PARAMETER parameter3;
-		parameter3.InitAsDescriptorTable(1, &range3);
+		parameter3.InitAsConstantBufferView(2);
 
-		auto parameters = { parameter1, parameter2, parameter3};
-		D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags =
-			D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
-			D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
-			D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS |
-			D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS;
+		CD3DX12_DESCRIPTOR_RANGE range4;
+		range4.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
+
+		CD3DX12_ROOT_PARAMETER parameter4;
+		parameter4.InitAsDescriptorTable(1, &range4, D3D12_SHADER_VISIBILITY_PIXEL);
+
+		auto parameters = { parameter1, parameter2, parameter3, parameter4};
 
 		CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc;
-		rootSignatureDesc.Init(3, parameters.begin(), 0, nullptr, rootSignatureFlags);
+		rootSignatureDesc.Init(4, parameters.begin(), 6, GetStaticSamplers().data(), D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
 		ComPtr<ID3DBlob> rootSignatureBlob = nullptr;
 		ComPtr<ID3DBlob> rootSignatureBlobError = nullptr;
 		DX::ThrowIfFailed(D3D12SerializeRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &rootSignatureBlob, &rootSignatureBlobError));
 		if (rootSignatureBlobError != nullptr)
-		{}
+		{
+			throw std::invalid_argument("EX");
+		}
 
 		DX::ThrowIfFailed(Device->CreateRootSignature(0, rootSignatureBlob->GetBufferPointer(), rootSignatureBlob->GetBufferSize(), IID_PPV_ARGS(&RootSignature)));
 	}
@@ -406,11 +545,12 @@ namespace WoodenEngine
 		const D3D12_INPUT_ELEMENT_DESC inputElements[] =
 		{
 			{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-			{"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0}
+			{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+			{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0}
 		};
 
 		InputLayout.pInputElementDescs = inputElements;
-		InputLayout.NumElements = 2;
+		InputLayout.NumElements = 3;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
 
@@ -422,6 +562,7 @@ namespace WoodenEngine
 		psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 		psoDesc.SampleMask = UINT_MAX;
 		psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+		psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
 		psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 		psoDesc.NumRenderTargets = 1;
 		psoDesc.RTVFormats[0] = BufferFormat;
@@ -443,6 +584,8 @@ namespace WoodenEngine
 			}
 		}
 
+		GameTime += 0.016f;
+
 		// Shift frame to the next
 		iCurrFrameResource = (iCurrFrameResource + 1) % NMR_SWAP_BUFFERS;
 		CurrFrameResource = FramesResource[iCurrFrameResource].get();
@@ -463,10 +606,18 @@ namespace WoodenEngine
 		{
 			if (Object->IsRenderable() && Object->GetNumDirtyConstBuffers() > 0)
 			{
-				const auto WorldMatrix = Object->GetWorldMatrix();
-
 				SObjectData ObjectShaderData;
+
+				auto WorldMatrix = Object->GetWorldMatrix();
 				XMStoreFloat4x4(&ObjectShaderData.WorldMatrix, XMMatrixTranspose(WorldMatrix));
+				
+				auto MaterialTransform = Object->GetMaterialTransform();
+				XMStoreFloat4x4(&ObjectShaderData.MaterialTransform, XMLoadFloat4x4(&MaterialTransform));
+
+				ObjectShaderData.Time = Object->GetLifeTime();
+				
+				// Cruch!
+				ObjectShaderData.IsWater = Object->GetMaterial()->Name == "water";
 
 				ObjectsBuffer->CopyData(Object->GetConstBufferIndex(), ObjectShaderData);
 
@@ -489,6 +640,7 @@ namespace WoodenEngine
 				MaterialShaderData.DiffuzeAlbedo = MaterialData->DiffuseAlbedo;
 				MaterialShaderData.FresnelR0 = MaterialData->FresnelR0;
 				MaterialShaderData.Roughness = MaterialData->Roughness;
+				MaterialShaderData.MaterialTransform = MaterialData->Transform;
 
 				MaterialsBuffer->CopyData(MaterialData->iConstBuffer, MaterialShaderData);
 
@@ -511,12 +663,24 @@ namespace WoodenEngine
 		auto ViewProj = XMMatrixMultiply(ViewMatrix, ProjMatrix);
 		XMStoreFloat4x4(&ConstFrameData.ViewProjMatrix, XMMatrixTranspose(ViewProj));
 
-		ConstFrameData.EyePosition = Camera->GetWorldPosition();
-		ConstFrameData.AmbientLight = { 0.25f, 0.25f, 0.35f, 1.0f};
+		ConstFrameData.CameraPosition = Camera->GetWorldPosition();
+		ConstFrameData.AmbientLight = { 0.35f, 0.35f, 0.35f, 1.0f};
+		ConstFrameData.GameTime = GameTime;
 
 		ConstFrameData.Lights[0].Direction = { 0.57735f, -0.57735f, 0.57735f };
 		ConstFrameData.Lights[0].Strength = { 0.6f, 0.6f, 0.6f };
 
+		ConstFrameData.Lights[1].Direction = { -0.57735f, -0.57735f, 0.57735f };
+		ConstFrameData.Lights[1].Strength = { 0.3f, 0.3f, 0.3f };
+
+		ConstFrameData.Lights[2].Direction = { 0.0f, -0.707f, -0.707f };
+		ConstFrameData.Lights[2].Strength = { 0.15f, 0.15f, 0.15f };
+
+		ConstFrameData.Lights[3].Direction = { 0.0f, -1.0f, 0.0f};
+		ConstFrameData.Lights[3].Strength = { 0.8f, 0.0f, 0.0f };
+		ConstFrameData.Lights[3].Position = { 0.0f, 5.0f, 0.0f };
+		ConstFrameData.Lights[3].FalloffStart = 400;
+		ConstFrameData.Lights[3].FalloffEnd = 500;
 
 		CurrFrameResource->FrameDataBuffer->CopyData(0, ConstFrameData);
 }
@@ -546,15 +710,15 @@ namespace WoodenEngine
 
 		CmdList->SetGraphicsRootSignature(RootSignature.Get());
 
-		ID3D12DescriptorHeap* cbvDescriptorHeaps[] = { CBVDescriptorHeap.Get() };
+		ID3D12DescriptorHeap* cbvDescriptorHeaps[] = {  SRVDescriptorHeap.Get()};
 		CmdList->SetDescriptorHeaps(_countof(cbvDescriptorHeaps), cbvDescriptorHeaps);
 
 		// Set frame const buffer as argumet to shader
 		auto CBVGPUHandle = CD3DX12_GPU_DESCRIPTOR_HANDLE{
 			CBVDescriptorHeap->GetGPUDescriptorHandleForHeapStart() };
 		CBVGPUHandle.Offset(Objects.size()*NMR_SWAP_BUFFERS + iCurrFrameResource,
-			CBVDescriptorHandleIncrementSize);
-		CmdList->SetGraphicsRootDescriptorTable(2, CBVGPUHandle);
+			CBVSRVDescriptorHandleIncrementSize);
+		CmdList->SetGraphicsRootConstantBufferView(2, CurrFrameResource->FrameDataBuffer->Resource()->GetGPUVirtualAddress());
 
 		CmdList->RSSetViewports(1, &ScreenViewport);
 		CmdList->RSSetScissorRects(1, &ScissorRect);
@@ -582,15 +746,28 @@ namespace WoodenEngine
 			auto ObjectCBVHandle = CD3DX12_GPU_DESCRIPTOR_HANDLE{
 				CBVDescriptorHeap->GetGPUDescriptorHandleForHeapStart() };
 			ObjectCBVHandle.Offset(Objects.size()*iCurrFrameResource + Object->GetConstBufferIndex(),
-				CBVDescriptorHandleIncrementSize);
+				CBVSRVDescriptorHandleIncrementSize);
 
-			CmdList->SetGraphicsRootDescriptorTable(0, ObjectCBVHandle);
+			CmdList->SetGraphicsRootConstantBufferView(0, 
+				CurrFrameResource->ObjectsDataBuffer->Resource()->GetGPUVirtualAddress()+
+				Object->GetConstBufferIndex()*CurrFrameResource->ObjectsDataBuffer->GetElementByteSize());
+
+			//CmdList->SetGraphicsRootDescriptorTable(0, ObjectCBVHandle);
 
 			auto MaterialsResAddress =
 				CurMaterialsResource->Resource()->GetGPUVirtualAddress() +
 				Object->GetMaterial()->iConstBuffer*CurMaterialsResource->GetElementByteSize();
 
 			CmdList->SetGraphicsRootConstantBufferView(1, MaterialsResAddress);
+
+
+
+			auto DiffuseTexSRVHandle = CD3DX12_GPU_DESCRIPTOR_HANDLE{
+				SRVDescriptorHeap->GetGPUDescriptorHandleForHeapStart()
+			};
+			DiffuseTexSRVHandle.Offset(Object->GetMaterial()->DiffuseTexture->iSRVHeap, CBVSRVDescriptorHandleIncrementSize);
+			CmdList->SetGraphicsRootDescriptorTable(3, DiffuseTexSRVHandle);
+
 
 			CmdList->DrawIndexedInstanced(
 				MeshData.Indices.size(), 1, MeshData

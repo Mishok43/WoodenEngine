@@ -134,6 +134,12 @@ namespace WoodenEngine
 			void SetIsRenderable(const bool Renderable) noexcept;
 
 
+			/** @brief Sets transform matrix for object's material
+			  * @param MaterialTransform Material transform matrix (const XMFLOAT4x4 &)
+			  * @return (void)
+			  */
+			void SetMaterialTrasnform(const XMFLOAT4X4& MaterialTransform) noexcept;
+
 			/** @brief Set flag update method is calling
 			  * @return (void)
 			  */
@@ -169,6 +175,11 @@ namespace WoodenEngine
 			  */
 			const FMaterialData* GetMaterial() const noexcept;
 
+			/** @brief Returns material transform matrix
+			  * @return material transform matrix (const DirectX::XMFLOAT4X4&)
+			  */
+			const XMFLOAT4X4& GetMaterialTransform() const noexcept;
+
 			/** @brief Returns flag if object is supposed to be rendered to the screen
 			  * @return true - renderable/false - not(bool)
 			  */
@@ -188,6 +199,12 @@ namespace WoodenEngine
 			  * @return (const DirectX::XMFLOAT4&)
 			  */
 			const XMFLOAT4& GetColor() const noexcept;
+
+
+			/** @brief Returns object's life time 
+			  * @return Life time (float)
+			  */
+			float GetLifeTime() const noexcept;
 		protected:
 			// Flags if update method is executing or not
 			bool bIsUpdating = true;
@@ -213,6 +230,9 @@ namespace WoodenEngine
 			// Vector with an absolute scale in the world (default: 1.0f, 1.0f, 1.0f)
 			XMFLOAT3 Scale = MathHelper::Identity3();
 			
+			// Material transform matrix
+			XMFLOAT4X4 MaterialTransform = MathHelper::Identity4x4();
+
 			// Life time in seconds
 			float LifeTime = 0;
 

@@ -18,9 +18,9 @@ namespace WoodenEngine
 		WCamera(
 			const float WindowWidth,
 			const float WindowHeight,
-			const float DefaultXAngle=DirectX::XM_PI/3.0f,
-			const float DefaultZAngle=DirectX::XM_PIDIV2,
-			const float DefaultRadius=10.0);
+			const float DefaultXAngle=XM_PIDIV4,
+			const float DefaultYAngle= 2.55f,
+			const float DefaultRadius=25.0f);
 
 		virtual void Update(float Delta) override;
 
@@ -40,11 +40,11 @@ namespace WoodenEngine
 		float WindowWidth;
 		float WindowHeight;
 
-		float XAngle = DirectX::XM_PI / 3.0f;
+		float XAngle = XM_PIDIV4;
 		
-		float ZAngle = DirectX::XM_PIDIV2;
+		float YAngle = 2.55f;
 		
-		float ViewRadius = 10.0f;
+		float ViewRadius = 25.0f;
 
 		// View matrix for rendering
 		XMMATRIX ViewMatrix;

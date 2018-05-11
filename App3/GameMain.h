@@ -9,7 +9,7 @@
 #include "pch.h"
 
 #include "FrameResource.h"
-#include "GameResources.h"
+#include "GameResource.h"
 
 // Renders Direct3D content on the screen.
 namespace WoodenEngine
@@ -71,6 +71,8 @@ namespace WoodenEngine
 
 		void AddMaterials();
 
+		void AddTextures();
+
 		// Initialize rtv heaps
 		void InitDescriptorHeap();
 
@@ -79,6 +81,8 @@ namespace WoodenEngine
 		void InitDepthStencilBuffer();
 
 		void InitConstBuffersViews();
+
+		void InitTexturesViews();
 
 		void InitViewport();
 
@@ -103,6 +107,7 @@ namespace WoodenEngine
 
 		void UpdateFrameConstBuffer();
 
+		std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> GetStaticSamplers();
 
 		WCamera* Camera;
 
@@ -121,7 +126,9 @@ namespace WoodenEngine
 
 		std::vector<WObject*>  Objects; 
 
-		std::unique_ptr<FGameResources> GameResources;
+
+
+		std::unique_ptr<FGameResource> GameResources;
 		std::unique_ptr<FFrameResource> FramesResource[NMR_SWAP_BUFFERS];
 
 		ComPtr<ID3D12Resource> SwapChainBuffers[NMR_SWAP_BUFFERS];
@@ -133,11 +140,12 @@ namespace WoodenEngine
 
 		uint16 RTVDescriptorHandleIncrementSize = 0;
 		uint16 DSVDescriptorHandleIncrementSize = 0;
-		uint16 CBVDescriptorHandleIncrementSize = 0;
+		uint16 CBVSRVDescriptorHandleIncrementSize = 0;
 
 		ComPtr<ID3D12DescriptorHeap> DSVDescriptorHeap;
 		ComPtr<ID3D12DescriptorHeap> RTVDescriptorHeap;
 		ComPtr<ID3D12DescriptorHeap> CBVDescriptorHeap;
+		ComPtr<ID3D12DescriptorHeap> SRVDescriptorHeap;
 
 		D3D12_VIEWPORT ScreenViewport;
 		D3D12_RECT ScissorRect;
@@ -153,5 +161,7 @@ namespace WoodenEngine
 
 		// Cached reference to the output window
 		Platform::Agile<Windows::UI::Core::CoreWindow> Window;
+
+		float GameTime;
 	};
 }

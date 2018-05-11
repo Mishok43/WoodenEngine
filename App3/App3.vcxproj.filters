@@ -47,10 +47,13 @@
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="MeshData.cpp" />
     <ClCompile Include="Object.cpp" />
-    <ClCompile Include="GameResources.cpp" />
     <ClCompile Include="FrameResource.cpp" />
     <ClCompile Include="GameMain.cpp" />
     <ClCompile Include="Camera.cpp" />
+    <ClCompile Include="Common\DDSTextureLoader.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="GameResource.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="App.h" />
@@ -58,13 +61,17 @@
     <ClInclude Include="ShaderStructures.h" />
     <ClInclude Include="MathHelper.h" />
     <ClInclude Include="MeshData.h" />
-    <ClInclude Include="GameResources.h" />
     <ClInclude Include="Object.h" />
     <ClInclude Include="FrameResource.h" />
     <ClInclude Include="EngineSettings.h" />
     <ClInclude Include="GameMain.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="MaterialData.h" />
+    <ClInclude Include="Common\DDSTextureLoader.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="GameResource.h" />
+    <ClInclude Include="TextureData.h" />
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest" />

@@ -20,7 +20,8 @@ namespace WoodenEngine
 	std::unique_ptr<FMeshData> FMeshGenerator::CreateBox(
 		float Width, 
 		float Height, 
-		float Depth
+		float Depth,
+		uint32 NumSubdivisions
 	) const noexcept
 	{
 		auto BoxMeshData = std::make_unique<FMeshData>("Box");
@@ -31,40 +32,40 @@ namespace WoodenEngine
 
 		BoxMeshData->Vertices = {
 			// Front face
-			{ -WidthHalf, -HeightHalf, -DepthHalf, 0.0f, 0.0f, -1.0f, 1.0f, 0.0f, 0.0f},
-			{ WidthHalf, -HeightHalf, -DepthHalf, 0.0f, 0.0f, -1.0f, 1.0f, 0.0f, 0.0f},
-			{ WidthHalf, HeightHalf, -DepthHalf , 0.0f, 0.0f, -1.0f, 1.0f, 0.0f, 0.0f},
-			{ -WidthHalf, HeightHalf, -DepthHalf , 0.0f, 0.0f, -1.0f, 1.0f, 0.0f, 0.0f},
+			{ -WidthHalf, -HeightHalf, -DepthHalf, 0.0f, 0.0f, -1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f},
+			{ WidthHalf, -HeightHalf, -DepthHalf, 0.0f, 0.0f, -1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f},
+			{ WidthHalf, HeightHalf, -DepthHalf , 0.0f, 0.0f, -1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f},
+			{ -WidthHalf, HeightHalf, -DepthHalf , 0.0f, 0.0f, -1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f},
 
 			// Back face
-			{ -WidthHalf, -HeightHalf, DepthHalf , 0.0f, 0.0f, 1.0f, -1.0f, 0.0f, 0.0f },
-			{ WidthHalf, -HeightHalf, DepthHalf , 0.0f, 0.0f, 1.0f, -1.0f, 0.0f, 0.0f},
-			{ WidthHalf, HeightHalf, DepthHalf , 0.0f, 0.0f, 1.0f, -1.0f, 0.0f, 0.0f},
-			{ -WidthHalf, HeightHalf, DepthHalf , 0.0f, 0.0f, 1.0f, -1.0f, 0.0f, 0.0f},
+			{ -WidthHalf, -HeightHalf, DepthHalf , 0.0f, 0.0f, 1.0f, -1.0f, 0.0f, 0.0f, 1.0f, 1.0f},
+			{ WidthHalf, -HeightHalf, DepthHalf , 0.0f, 0.0f, 1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f},
+			{ WidthHalf, HeightHalf, DepthHalf , 0.0f, 0.0f, 1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+			{ -WidthHalf, HeightHalf, DepthHalf , 0.0f, 0.0f, 1.0f, -1.0f, 0.0f, 0.0f, 1.0f, 0.0f},
 
 			// Top face
-			{ -WidthHalf, HeightHalf, -DepthHalf , 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f },
-			{ WidthHalf, HeightHalf, -DepthHalf , 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f },
-			{ WidthHalf, HeightHalf, DepthHalf , 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f },
-			{ -WidthHalf, HeightHalf, DepthHalf , 0.0f, 1.0f, 0.0f,1.0f, 0.0f, 0.0f },
+			{ -WidthHalf, HeightHalf, -DepthHalf , 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f },
+			{ WidthHalf, HeightHalf, -DepthHalf , 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f },
+			{ WidthHalf, HeightHalf, DepthHalf , 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f,  1.0f, 0.0f},
+			{ -WidthHalf, HeightHalf, DepthHalf , 0.0f, 1.0f, 0.0f,1.0f, 0.0f, 0.0f, 0.0f, 0.0f },
 
 			// Bottom face
-			{ -WidthHalf, -HeightHalf, -DepthHalf , 0.0f, -1.0f, 0.0f, -1.0f, 0.0f, 0.0f },
-			{ WidthHalf, -HeightHalf, -DepthHalf , 0.0f, -1.0f, 0.0f, -1.0f, 0.0f, 0.0f },
-			{ WidthHalf, -HeightHalf, DepthHalf , 0.0f, -1.0f, 0.0f, -1.0f, 0.0f, 0.0f },
-			{ -WidthHalf, -HeightHalf, DepthHalf , 0.0f, -1.0f, 0.0f, -1.0f, 0.0f, 0.0f },
+			{ -WidthHalf, -HeightHalf, -DepthHalf , 0.0f, -1.0f, 0.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+			{ WidthHalf, -HeightHalf, -DepthHalf , 0.0f, -1.0f, 0.0f, -1.0f, 0.0f, 0.0f, 1.0f, 0.0f},
+			{ WidthHalf, -HeightHalf, DepthHalf , 0.0f, -1.0f, 0.0f, -1.0f, 0.0f, 0.0f, 1.0f, 1.0f},
+			{ -WidthHalf, -HeightHalf, DepthHalf , 0.0f, -1.0f, 0.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f},
 
 			// Left face
-			{ -WidthHalf, -HeightHalf, -DepthHalf, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f },
-			{ -WidthHalf, HeightHalf, -DepthHalf , -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f },
-			{ -WidthHalf, HeightHalf, DepthHalf , -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f },
-			{ -WidthHalf, -HeightHalf, DepthHalf , -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f },
+			{ -WidthHalf, -HeightHalf, -DepthHalf, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 1.0f, 1.0f},
+			{ -WidthHalf, HeightHalf, -DepthHalf , -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 1.0f, 0.0f},
+			{ -WidthHalf, HeightHalf, DepthHalf , -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 0.0f},
+			{ -WidthHalf, -HeightHalf, DepthHalf , -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 1.0f },
 
 			// Right face
-			{ WidthHalf, -HeightHalf, -DepthHalf, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f },
-			{ WidthHalf, HeightHalf, -DepthHalf , 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f },
-			{ WidthHalf, HeightHalf, DepthHalf , 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f },
-			{ WidthHalf, -HeightHalf, DepthHalf , 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f },
+			{ WidthHalf, -HeightHalf, -DepthHalf, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f},
+			{ WidthHalf, HeightHalf, -DepthHalf , 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f},
+			{ WidthHalf, HeightHalf, DepthHalf , 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f , 1.0f, 0.0f},
+			{ WidthHalf, -HeightHalf, DepthHalf , 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f , 1.0f, 1.0f},
 		};
 
 		BoxMeshData->Indices = {
@@ -92,6 +93,11 @@ namespace WoodenEngine
 			20, 21, 22,
 			20, 22, 23
 		};
+
+		for (auto i = 0; i < NumSubdivisions; ++i)
+		{
+			Subdivide(BoxMeshData.get());
+		}
 
 		return BoxMeshData;
 	}
@@ -138,6 +144,9 @@ namespace WoodenEngine
 				Vertex.Tangent.x = -Radius*SinPhi*SinTheta;
 				Vertex.Tangent.y = 0.0f;
 				Vertex.Tangent.z = Radius*SinPhi*CosTheta;
+
+				Vertex.TexC.x = Theta / XM_2PI;
+				Vertex.TexC.y = Phi / XM_PI;
 
 				// Normalize tangent vector and store it as tangent vector
 				XMStoreFloat3(&Vertex.Tangent, XMVector3Normalize(XMLoadFloat3(&Vertex.Tangent)));
@@ -189,25 +198,102 @@ namespace WoodenEngine
 		return SphereMeshData;
 	}
 
-	template<typename Out>
-	void split(const std::string &s, char delim, Out result)
+	std::unique_ptr<FMeshData> FMeshGenerator::CreateGrid(float Width, float Height, uint32 NumVSubdivisions, uint32 NumHSubdivisions) const noexcept
 	{
-		std::stringstream ss(s);
-		std::string item;
-		while (std::getline(ss, item, delim))
+		auto MeshData = std::make_unique<FMeshData>("Grid");
+
+		uint32 NumVertex = (NumHSubdivisions+1) * (NumVSubdivisions+1);
+		MeshData->Vertices.resize(NumVertex);
+		
+		uint32 NumIndices = (NumHSubdivisions * NumVSubdivisions)*6;
+		MeshData->Indices.resize(NumIndices);
+
+		const auto HalfHeight = Height/2.0f;
+		const auto HalfWidth = Width / 2.0f;
+
+		const auto HeightStep = Height / NumVSubdivisions;
+		const auto WidthStep = Width / NumHSubdivisions;
+
+		for (auto iVSubdivision = 0, iVertex=0; iVSubdivision < NumVSubdivisions; ++iVSubdivision)
 		{
-			*(result++) = item;
+			float Z = -HalfHeight + iVSubdivision * HeightStep;
+			for (auto iHSubdivision = 0; iHSubdivision < NumHSubdivisions; ++iHSubdivision, ++iVertex)
+			{
+				float X = -HalfWidth + iHSubdivision * WidthStep;
+
+				FVertex VertexData;
+				VertexData.Position = { X, 0.0f, Z };
+				VertexData.Normal = { 0.0f, 1.0f, 0.0f };
+				VertexData.Tangent = { 1.0f, 0.0f, 0.0f };
+				VertexData.TexC.x = (float)iHSubdivision / (NumHSubdivisions-1);
+				VertexData.TexC.y = (float)iVSubdivision / (NumVSubdivisions- 1);
+
+
+				MeshData->Vertices[iVertex] = std::move(VertexData);
+			}
+		}
+
+		for (auto iVSubdivision = 0, iIndex=0; iVSubdivision < NumVSubdivisions-1; ++iVSubdivision)
+		{
+			for (auto iHSubdivision = 0; iHSubdivision < NumHSubdivisions-1; ++iHSubdivision, iIndex+=6)
+			{
+				MeshData->Indices[iIndex] = iVSubdivision*NumHSubdivisions+ iHSubdivision;
+				MeshData->Indices[iIndex+1] = (iVSubdivision + 1)*NumHSubdivisions+ iHSubdivision;
+				MeshData->Indices[iIndex+2] = (iVSubdivision + 1)*NumHSubdivisions + iHSubdivision + 1;
+
+				MeshData->Indices[iIndex+3] = iVSubdivision * NumHSubdivisions + iHSubdivision;
+				MeshData->Indices[iIndex+4] = (iVSubdivision + 1)*NumHSubdivisions+ iHSubdivision + 1;
+				MeshData->Indices[iIndex+5] = iVSubdivision*NumHSubdivisions+iHSubdivision+1;
+			}
+		}
+
+		return MeshData;
+	}
+
+	void FMeshGenerator::Subdivide(FMeshData* MeshData) const noexcept
+	{
+		const auto CopiedMeshData = *MeshData;
+
+		MeshData->Vertices.resize(0);
+		MeshData->Indices.resize(0);
+
+		const auto NumTriangles = CopiedMeshData.Indices.size() / 3;
+		for (auto i = 0; i < NumTriangles; ++i)
+		{
+			auto V0 = CopiedMeshData.Vertices[CopiedMeshData.Indices[i * 3 + 0]];
+			auto V1 = CopiedMeshData.Vertices[CopiedMeshData.Indices[i * 3 + 1]];
+			auto V2 = CopiedMeshData.Vertices[CopiedMeshData.Indices[i * 3 + 2]];
+
+			auto M0 = FVertex::MidPoint(V0, V1);
+			auto M1 = FVertex::MidPoint(V1, V2);
+			auto M2 = FVertex::MidPoint(V0, V2);
+
+			MeshData->Vertices.push_back(std::move(V0));
+			MeshData->Vertices.push_back(std::move(V1));
+			MeshData->Vertices.push_back(std::move(V2));
+			MeshData->Vertices.push_back(std::move(M0));
+			MeshData->Vertices.push_back(std::move(M1));
+			MeshData->Vertices.push_back(std::move(M2));
+
+			MeshData->Indices.push_back(i * 6 + 0);
+			MeshData->Indices.push_back(i * 6 + 3);
+			MeshData->Indices.push_back(i * 6 + 5);
+
+			MeshData->Indices.push_back(i * 6 + 3);
+			MeshData->Indices.push_back(i * 6 + 4);
+			MeshData->Indices.push_back(i * 6 + 5);
+
+			MeshData->Indices.push_back(i * 6 + 5);
+			MeshData->Indices.push_back(i * 6 + 4);
+			MeshData->Indices.push_back(i * 6 + 2);
+
+			MeshData->Indices.push_back(i * 6 + 3);
+			MeshData->Indices.push_back(i * 6 + 1);
+			MeshData->Indices.push_back(i * 6 + 4);
 		}
 	}
 
-	std::vector<std::string> split(const std::string &s, char delim)
-	{
-		std::vector<std::string> elems;
-		split(s, delim, std::back_inserter(elems));
-		return elems;
-	}
-
-	std::unique_ptr<FMeshData> FMeshParser::ParseMeshData(const std::string& FilePath) const
+	std::unique_ptr<FMeshData> FMeshParser::ParseTxtData(const std::string& FilePath) const
 	{
 		// use smart pointer for preventing memory leak if exception is thrown
 		auto MeshData = std::make_unique<FMeshData>();
@@ -225,27 +311,21 @@ namespace WoodenEngine
 			throw std::invalid_argument("File " + FilePath + "is empty");
 		}
 		
-		std::string StrNumVertex;
-		std::getline(File, StrNumVertex);
-
-		MeshData->Vertices.reserve(std::stoi(StrNumVertex));		
+		uint16 NumVertices;
+		File >> NumVertices;
+		MeshData->Vertices.reserve(NumVertices);
 		
-		std::string StrNumIndex;
-		std::getline(File, StrNumIndex);
-
-		MeshData->Indices.reserve(std::stoi(StrNumIndex));
+		uint16 NumIndices;
+		File >> NumIndices;
+		MeshData->Indices.reserve(NumIndices*3);
 
 		auto VerticesIter = MeshData->Vertices.cend();
 		std::string StrVertexData;
 		for (auto iVertex = 0; iVertex < MeshData->Vertices.capacity(); ++iVertex)
 		{
-			std::getline(File, StrVertexData);
-			auto VertexData = split(StrVertexData, ' ');
-			
 			FVertex Vertex;
-			Vertex.Position.x = std::stof(std::move(VertexData[0]));
-			Vertex.Position.y = std::stof(std::move(VertexData[1]));
-			Vertex.Position.z = std::stof(std::move(VertexData[2]));
+			File >> Vertex.Position.x >> Vertex.Position.y >> Vertex.Position.z;
+			File >> Vertex.Normal.x >> Vertex.Normal.y >> Vertex.Normal.z;
 
 			VerticesIter = MeshData->Vertices.insert(VerticesIter, std::move(Vertex));
 			VerticesIter++;
@@ -253,18 +333,11 @@ namespace WoodenEngine
 
 		auto IndicesIter = MeshData->Indices.cend();
 		std::string StrIndexData;
-		for (auto iIndex = 0; iIndex < MeshData->Indices.capacity()/3; ++iIndex)
+		for (auto iIndex = 0; iIndex < MeshData->Indices.capacity(); ++iIndex)
 		{
-			std::getline(File, StrIndexData);
-			auto IndexData = split(StrIndexData, ' ');
-
-			IndicesIter = MeshData->Indices.insert(IndicesIter, std::stoi(std::move(IndexData[0])));
-			IndicesIter++;
-
-			IndicesIter = MeshData->Indices.insert(IndicesIter, std::stoi(std::move(IndexData[1])));
-			IndicesIter++;
-
-			IndicesIter = MeshData->Indices.insert(IndicesIter, std::stoi(std::move(IndexData[2])));
+			uint16 Index;
+			File >> Index;
+			IndicesIter = MeshData->Indices.insert(IndicesIter, std::move(Index));
 			IndicesIter++;
 		}
 

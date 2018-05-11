@@ -3,6 +3,7 @@
 #include <string>
 
 #include "EngineSettings.h"
+#include "TextureData.h"
 
 namespace WoodenEngine
 {
@@ -29,12 +30,17 @@ namespace WoodenEngine
 		// Index into const buffer of that material
 		uint64 iConstBuffer = UINT64_MAX;
 
-		// Number diry const buffers/frames which has old-day data
+		// Number dirty const buffers/frames which has old-day data
 		uint8 NumDirtyConstBuffers = NMR_SWAP_BUFFERS;
 
 		// Rendering settings
 		XMFLOAT4 DiffuseAlbedo = { 1.0f, 1.0f, 1.0f, 1.0f };
 		XMFLOAT3 FresnelR0 = { 0.01f, 0.01f, 0.01f };
 		float Roughness = 0.25f;
+
+		// Material transform uv-coordinates (for implementing effects)
+		XMFLOAT4X4 Transform = MathHelper::Identity4x4();
+
+		const FTextureData* DiffuseTexture = nullptr;
 	};
 }

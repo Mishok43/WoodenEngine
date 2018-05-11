@@ -1,118 +1,142 @@
+#define MaxLights 16
+
+// Light source structure
 struct Light
 {
+	// Strength
 	float3 Strength;
+
+	// Attenuation start (Point/Spot only)
 	float FalloffStart;
+	
+	// Direction (Directional/Spot only)
 	float3 Direction;
+
+	// Attenuation end (Point/Spot only)
 	float FalloffEnd;
+
+	// World position (Point/Spot only)
 	float3 Position;
+
+	// Spot only (indirectionaly denotes angle of spot)
 	float SpotPower;
 };
 
+// Object's material
 struct Material
 {
+	// Diffuse albedo (factor for reflection)
 	float4 DiffuseAlbedo;
+
+	// Fresnel base
 	float3 FresnelR0;
+	
+	// Shininess = 1 - Roughness
 	float Shininess;
 };
 
-float CalcAttenuation(float d, float falloffStart, float falloffEnd)
+// Computes attenuation for point/spot lights
+float ComputeAttenuation(float distanceSource, float falloffStart, float falloffEnd)
 {
-	return saturate((falloffEnd-d)/(falloffEnd-falloffStart))
+    return saturate((falloffEnd - distanceSource) / (falloffEnd - falloffStart));
 }
 
-float3 SchlinkFresnel(float3 R0, float3 normal, float3 lightVec)
+// Reflection base on fresnel approximation
+float3 FresnelReflaction(float3 R0, float3 vNormal, float3 lightDirection)
 {
-	float cosIncidentAngle = saturate(dot(normal, lightVec));
+    float cosNL = saturate(dot(vNormal, lightDirection));
 
-	float f0 = 1.0f - cosIncidentAngle;
-	float3 reflectPercent = R0 + (1.0f - R0)*(f0*f0*f0*f0*f0);
+    float f0 = 1.0f - cosNL;
+	float3 reflectFactor = R0 + (1.0f - R0)*(f0*f0*f0*f0*f0);
 
-	return reflectPercent;
+    return reflectFactor;
 }
 
-float3 BlinnPhong(float3 lightStrength, float3 lightVec,
-	float3 normal, float3 toEye, Material mat)
+// Computes light based on fresnel reflection and roughness factor
+float3 BlinnPhong(float3 lightStrength, float3 lightDirection,
+	float3 vNormal, float3 toCamera, Material material)
 {
-	const float m = mat.Shininess*256.0f;
-	float3 halfVec = normalize(toEye + lightVec);
+    const float m = material.Shininess * 256.0f;
+
+    float3 microfacetNormal = normalize(toCamera + lightDirection);
 
 	float roughnessFactor = 
-		(m + 8.0f)*pow(max(dot(halfVec, normal), 0.0f), m) / 8.0f;
+		(m + 8.0f) * pow(max(dot(microfacetNormal, vNormal), 0.0f), m) / 8.0f;
 	float3 fresnelFactor =
-		SchlickFresnel(mat.FresnelR0, halfVec, lightVec);
+		FresnelReflaction(material.FresnelR0, microfacetNormal, lightDirection);
 
 	float3 specAlbedo = fresnelFactor * roughnessFactor;
 
+	// Normalize for ldr (low-density range of colors)
 	specAlbedo = specAlbedo / (specAlbedo + 1.0f);
 
-	return (mat.DiffuseAlbedo.rgb + specAlbedo)*lightStrength;
+    return (material.DiffuseAlbedo.rgb + specAlbedo) * lightStrength;
 }
 
-float3 ComputeDirectionalLight(Light L, Material mat, float3 normal,
-	float3 toEye)
+float3 ComputeDirectionalLight(Light light, Material material, float3 vNormal,
+	float3 toCamera)
 {
-	float3 lightVec = -L.Direction;
+    float3 lightDirection = -light.Direction;
 
-	float ndotl = max(dot(lightVec, normal), 0.0f);
-	float3 lightStrength = L.Strength*ndotl;
+	// clamp because of possible negative cos
+	float cosNL= max(dot(lightDirection, vNormal), 0.0f);
 
-	return BlinnPhong(lightStrength, lightVec, normal, toEye, mat);
+	// because of lambert's cos law
+	float3 lightStrength = light.Strength*cosNL;
+
+	return BlinnPhong(lightStrength, lightDirection, vNormal, toCamera, material);
 }
 
-float3 ComputePointLight(Light L, Material mat, float3 pos, float3 normal, float3 toEye)
+float3 ComputePointLight(Light light, Material material, float3 vPos, float3 vNormal, float3 toCamera, float gameTime)
 {
-	float3 lightVec = L.Position - pos;
+    float3 lightDirection = light.Position - vPos;
 
-	float d = length(lightVec);
+    float distanceToLight = length(lightDirection);
 
-	if (d > L.FalloffEnd)
+	// if distance to light is more than attenuation end -> return
+    if (distanceToLight > light.FalloffEnd)
 		return 0.0f;
 
-	lightVec /= d;
+	// normalize
+    lightDirection /= distanceToLight;
 
-	float ndtol = max(dot(lightVec, normal), 0.0f);
-	float3 lightStrength = L.Strength*ndotl;
+    float cosLN = max(dot(lightDirection, vNormal), 0.0f);
+    float3 lightStrength = light.Strength * cosLN;
 
-	float att = CallAttenuation(d, L.FalloffStart, L.FalloffEnd);
-	lightStrength *= att;
+    float attenuationFactor = ComputeAttenuation(distanceToLight, light.FalloffStart, light.FalloffEnd);
+    lightStrength *= attenuationFactor;
 
-	return BlinnPhong(lightStrength, lightVec, normal, toEye, mat);
+    return BlinnPhong(lightStrength, lightDirection, vNormal, toCamera, material) * (0.5*cos(gameTime) + 0.5f);
 }
 
-
-float3 ComputeSpotLight(Light L, Material mat, float3 pos,
-	float3 normal, float3 toEye)
+float3 ComputeSpotLight(Light light, Material material, float3 vPos,
+	float3 vNormal, float3 toCamera, float gameTime)
 {
-	float3 lightVec = L.Position - pos;
+    float3 lightDirection = light.Position - vPos;
 
-	float d = length(lightVec);
+    float distanceToLight = length(lightDirection);
 
-	if (d > L.FalloffEnd)
-		return 0.0f;
+	// if distance to light is more than attenuation end -> return
+    if (distanceToLight > light.FalloffEnd)
+        return 0.0f;
 
-	lightVec /= d;
+	// normalize
+    lightDirection /= distanceToLight;
 
-	float ndtol = max(dot(lightVec, normal), 0.0f);
-	float3 lightStrength = L.Strength*ndotl;
+    float cosLN = max(dot(lightDirection, vNormal), 0.0f);
+    float3 lightStrength = light.Strength * cosLN;
 
-	float att = CallAttenuation(d, L.FalloffStart, L.FalloffEnd);
-	lightStrength *= att;
+    float attenuationFactor = ComputeAttenuation(distanceToLight, light.FalloffStart, light.FalloffEnd);
+    lightStrength *= attenuationFactor;
 
-	float spotFactor = pow(max(dot(-lightVec, L.Direction), 0.0f), L.SpotPower);
-	lightStrength *= spotFactor;
+    float spotFactor = pow(max(dot(-lightDirection, light.Direction), 0.0f), light.SpotPower);
+    lightStrength *= spotFactor;
 
-	return BlinnPhong(lightStrength, lightVec, normal, toEye, mat);
+    return BlinnPhong(lightStrength, lightDirection, vNormal, toCamera, material);
 }
 
-#define MaxLights 16
-
-cbuffer cbPass: register(b2)
-{
-	Light gLights[MaxLights];
-}
-
-float4 ComputeLighting(Light gLights[MaxLights], Material mat,
-	float3 pos, float3 normal, float3 toEye, float3 shadowFactor)
+float4 ComputeLighting(Light lights[MaxLights], Material material,
+	float3 vPos, float3 vNormal, float3 toCamera, float3 shadowFactor, float gameTime)
 {
 	float3 result = 0.0f;
 
@@ -122,7 +146,7 @@ float4 ComputeLighting(Light gLights[MaxLights], Material mat,
 	for (int i = 0; i < NUM_DIR_LIGHTS; ++i)
 	{
 		result += shadowFactor[i] * ComputeDirectionalLight(
-			gLights[i], mat, normal, toEye);
+			lights[i], material, vNormal, toCamera);
 	}
 #endif
 
@@ -130,16 +154,16 @@ float4 ComputeLighting(Light gLights[MaxLights], Material mat,
 	for (i = NUM_DIR_LIGHTS;
 		i < NUM_DIR_LIGHTS + NUM_POINT_LIGHTS; ++i)
 	{
-		result += ComputePointLight(gLights[i], mat,
-			pos, normal, toEye);
+		result += ComputePointLight(lights[i], material,
+			vPos, vNormal, toCamera, gameTime);
 	}
 #endif
 #if (NUM_SPOT_LIGHTS > 0)
 	for (i = NUM_DIR_LIGHTS + NUM_POINT_LIGHTS;
 		i < NUM_DIR_LIGHTS + NUM_POINT_LIGHTS + NUM_SPOT_LIGHTS; ++i)
 	{
-		result += ComputeSpotLight(gLights[i], mat, pos,
-			normal, toEye);
+		result += ComputeSpotLight(lights[i], material,
+			vPos, vNormal, toCamera, gameTime);
 	}
 #endif
 

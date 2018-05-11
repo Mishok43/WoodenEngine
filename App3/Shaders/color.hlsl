@@ -4,12 +4,17 @@
 // Transforms and colors geometry.
 //***************************************************************************************
 
+// Number of direction lights
 #ifndef NUM_DIR_LIGHTS
-#define NUM_DIR_LIGHTS 1
+#define NUM_DIR_LIGHTS 3
 #endif
+
+// Number of point lights
 #ifndef NUM_POINT_LIGHTS
-#define NUM_POINT_LIGHTS 0
+#define NUM_POINT_LIGHTS 1
 #endif
+
+// Number of spot lights
 #ifndef NUM_SPOT_LIGHTS
 #define NUM_SPOT_LIGHTS 0
 #endif
@@ -18,75 +23,148 @@
 
 cbuffer cbObject: register(b0)
 {
-	float4x4 WorldMatrix;
-	float4 Color;
-	float Time;
+	// World matrix
+	float4x4 cbWorld;
+
+	// Texture transform matrix
+    float4x4 cbTexTransform;
+
+	// Object's life time
+	float cbTime;
+
+    int cbIsWater;
 }
 
 cbuffer cbMaterial: register(b1)
+
 {
-	float4 DiffuzeAlbedo;
-	float3 FresnelR0;
-	float Roughness;
+    float4x4 cbMatTransform;
+
+	
+	// Diffuse reflection factor
+	float4 cbDiffuseAlbedo;
+
+	float3 cbFresnelR0;
+	
+	float cbRoughness;
 }
+
+Texture2D tDiffuseMap : register(t0);
+
+SamplerState sPointWrap : register(s0);
+SamplerState sPointClamp : register(s1);
+SamplerState sLinearWrap : register(s2);
+SamplerState sLinearClamp : register(s3);
+SamplerState sAnisotropicWrap : register(s4);
+SamplerState sAnisotropicClamp : register(s5);
 
 cbuffer cbFrame: register(b2)
 {
-	float4x4 ViewMatrix;
-	float4x4 ProjMatrix;
-	float4x4 ViewProjMatrix;
+	// View matrix
+	float4x4 cbView;
 
-	Light gLights[MaxLights];
-	float3 gEyePosW;
-	float GameTime;
+	// Proj matrix
+	float4x4 cbProjMatrix;
+	
+	// View proj matrix
+	float4x4 cbViewProj;
+	
+	// World camera position
+	float3 cbCameraPosW;
+	
+	// Game time
+	float cbGameTime;
 
-	float4 gAmbientLight;
+	// Game's ambient light 
+	float4 cbAmbientLight;
+
+	Light cbLights[MaxLights];
 };
 
 struct VertexIn
 {
+	// Local position
 	float3 PosL  : POSITION;
+
+	// Normal's local position
 	float3 NormalL: NORMAL;
+
+	// Texture coordinates
+    float2 TexC : TEXCOORD;
 };
 
 struct VertexOut
 {
-	float4 PosH : SV_POSITION;
+	// Projected position
+	float4 PosP : SV_POSITION;
+
+	// World position
 	float3 PosW : POSITION;
+
+	// Normal's world position
 	float3 NormalW: Normal;
+
+	// Texture coordinates
+    float2 TexC : TEXCOORD;
 };
+
+static const float PI = 3.14159265f;
 
 VertexOut VS(VertexIn vin)
 {
 	VertexOut vout = (VertexOut)0.0f;
-
-	float3 posW = mul(float4(vin.PosL, 1.0f), gWorld);
-	vout.PosW = posW.xyz;
-
-	vout.NormalW = mul(vin.NormalL, (float3x3)gWorld);
-
-	vout.PosH = mul(posW, gViewProj);
 	
+    if (cbIsWater > 0)
+    {
+        float sint = sin(cbTime / 10.0f);
+		vin.PosL.y = sin(vin.PosL.x + vin.PosL.z) * sint;
+        vin.NormalL = float3(-sint * cos(vin.PosL.x), 1, -sint * cos(vin.PosL.z));
+        vin.NormalL = normalize(vin.NormalL);
+    }
+
+	// Compute world position
+    float4 posW = mul(float4(vin.PosL, 1.0f), cbWorld);
+    vout.PosW = posW.xyz;
+
+	// Compute world normal
+    vout.NormalW = mul(vin.NormalL, (float3x3) cbWorld);
+
+	// Compute projected position
+    vout.PosP = mul(posW, cbViewProj);
+	
+    // Apply texture tranformation for creating some effects
+    // TexC - 2D coordinates, converts them to homogolenous space (z = 0 and w = 1.0f)
+	vout.TexC = mul(mul(float4(vin.TexC, 0.0f, 1.0f), cbTexTransform), cbMatTransform).xy;
+    
 	return vout;
 }
 
 float4 PS(VertexOut pin) : SV_Target
 {
+    float4 diffuseAlbedo = tDiffuseMap.Sample(sAnisotropicWrap, pin.TexC) * cbDiffuseAlbedo;
+
+	// Normalize normal because of possible uniform world transform
 	pin.NormalW = normalize(pin.NormalW);
 	
-	float3 toEyeW = normalize(gEyePosW - pin.PosW);
-	float4 ambient = gAmbientLight * gDiffuseAlbedo;
+	// Vector from point to eye
+	float3 toEyeW = normalize(cbCameraPosW - pin.PosW);
 
-	const float shininess = 1.0f - gRoughness;
-	Material mat = { gDiffuseAlbedo, gFresnelR0, shininess };
+	// Ambient light
+    float4 ambient = cbAmbientLight * diffuseAlbedo;
+
+	const float shininess = 1.0f - cbRoughness;
+
+    Material mat = { diffuseAlbedo, cbFresnelR0, shininess };
 
 	float3 shadowFactor = 1.0f;
-	float4 directLight = ComputeLighting(gLights, mat,
-		pin.PosW, pin.NormalW, toEyeW, shadowFactor);
+	// Compute diffuse and specular light
+	float4 directLight = ComputeLighting(cbLights, mat,
+		pin.PosW, pin.NormalW, toEyeW, shadowFactor, cbGameTime);
 
+	// Final color = ambient + directLight (diffuse light + specular light)
 	float4 litColor = ambient + directLight;
 
-	litColor.a = gDiffuseAlbedo.a;
+    litColor.a = diffuseAlbedo.a;
 
 	return litColor;
 }

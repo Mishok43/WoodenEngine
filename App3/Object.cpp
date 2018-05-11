@@ -19,7 +19,8 @@ namespace WoodenEngine
 
 	void WObject::Update(float Delta)
 	{
-
+		LifeTime += 0.16;
+		NumDirtyConstBuffers = NMR_SWAP_BUFFERS;
 	}
 
 	void WObject::SetPosition(const XMFLOAT3& Position) noexcept
@@ -103,6 +104,11 @@ namespace WoodenEngine
 		bIsRenderable = Renderable;
 	}
 
+	void WObject::SetMaterialTrasnform(const XMFLOAT4X4& MaterialTransform) noexcept
+	{
+		this->MaterialTransform = MaterialTransform;
+	}
+
 	void WObject::SetConstBufferIndex(const uint64 Index) noexcept
 	{
 		iConstBuffer = Index;
@@ -128,6 +134,11 @@ namespace WoodenEngine
 	const FMaterialData* WObject::GetMaterial() const noexcept
 	{
 		return Material;
+	}
+
+	const XMFLOAT4X4& WObject::GetMaterialTransform() const noexcept
+	{
+		return MaterialTransform;
 	}
 
 	const XMMATRIX& WObject::GetWorldMatrix() const noexcept
@@ -159,4 +170,10 @@ namespace WoodenEngine
 	{
 		return Color;
 	}
+
+	float WObject::GetLifeTime() const noexcept
+	{
+		return LifeTime;
+	}
+
 }

@@ -1,23 +1,24 @@
 #pragma once
 #include "Common/DirectXHelper.h"
+#include "Common/DDSTextureLoader.h"
+#include "GameResource.h"
 
-#include "GameResources.h"
 namespace WoodenEngine
 {
-	FGameResources::FGameResources()
+	FGameResource::FGameResource()
 	{
 	}
 
-	FGameResources::FGameResources(ComPtr<ID3D12Device> Device):
+	FGameResource::FGameResource(ComPtr<ID3D12Device> Device):
 		Device(Device)
 	{
 	}
 
-	FGameResources::~FGameResources()
+	FGameResource::~FGameResource()
 	{
 	}
 
-	void FGameResources::LoadMeshes(
+	void FGameResource::LoadMeshes(
 		std::vector<std::unique_ptr<FMeshData>>&& MeshesData,
 		ComPtr<ID3D12GraphicsCommandList> CMDList)
 	{
@@ -52,7 +53,7 @@ namespace WoodenEngine
 				const auto iVertex = i - MeshData->VertexBegin;
 
 				const SVertexData Vertex = 
-				{ MeshData->Vertices[iVertex].Position, MeshData->Vertices[iVertex].Normal };
+				{ MeshData->Vertices[iVertex].Position, MeshData->Vertices[iVertex].Normal, MeshData->Vertices[iVertex].TexC };
 				VertexDataIter = VerticesData.insert(VertexDataIter, std::move(Vertex));
 				VertexDataIter++;
 			}
@@ -95,23 +96,57 @@ namespace WoodenEngine
 		IndexBufferView.Format = DXGI_FORMAT_R16_UINT;
 	}
 
-	void FGameResources::AddMaterial(std::unique_ptr<FMaterialData> MaterialData)
+	void FGameResource::AddMaterial(std::unique_ptr<FMaterialData> MaterialData)
 	{
 		if (MaterialData->Name.empty())
 		{
 			throw std::invalid_argument("Material's name must be not empty");
 		}
 
+		if (MaterialsData.find(MaterialData->Name) != MaterialsData.end())
+		{
+			throw std::invalid_argument("A material with the same name exists");
+		}
+
 		MaterialsData[MaterialData->Name] = std::move(MaterialData);
 	}
 
-	void FGameResources::SetDevice(ComPtr<ID3D12Device> Device)
+	void FGameResource::LoadTexture(
+		const std::wstring& FileName,
+		const std::string& Name,
+		ComPtr<ID3D12GraphicsCommandList> CmdList)
+	{
+		if (CmdList == nullptr)
+		{
+			throw std::invalid_argument("CmdList must be not nullptr");
+		}
+
+		if (Name.empty())
+		{
+			throw std::invalid_argument("Name must be not empty");
+		}
+
+		if (TexturesData.find(Name) != TexturesData.end())
+		{
+			throw std::invalid_argument("A texture with same name exists");
+		}
+
+		auto Texture = std::make_unique<FTextureData>();
+		DX::ThrowIfFailed(CreateDDSTextureFromFile12(Device.Get(), CmdList.Get(), FileName.c_str(), 
+			Texture->Resource, Texture->UploadResource));
+
+		Texture->Name = Name;
+
+		TexturesData[Texture->Name] = std::move(Texture);
+	}
+
+	void FGameResource::SetDevice(ComPtr<ID3D12Device> Device)
 	{
 		assert(Device != nullptr);
 		this->Device = Device;
 	}
 
-	uint64 FGameResources::GetMaterialConstBufferIndex(const std::string& MaterialName) const
+	uint64 FGameResource::GetMaterialConstBufferIndex(const std::string& MaterialName) const
 	{
 		auto MaterialDataIt = MaterialsData.find(MaterialName);
 		if (MaterialDataIt == MaterialsData.end())
@@ -121,7 +156,7 @@ namespace WoodenEngine
 		return MaterialDataIt->second->iConstBuffer;
 	}
 
-	const FMaterialData* FGameResources::GetMaterialData(const std::string& MaterialName) const
+	const FMaterialData* FGameResource::GetMaterialData(const std::string& MaterialName) const
 	{
 		auto MaterialDataIt = MaterialsData.find(MaterialName);
 		if (MaterialDataIt == MaterialsData.end())
@@ -131,7 +166,7 @@ namespace WoodenEngine
 		return MaterialDataIt->second.get();
 	}
 
-	const FMeshData& FGameResources::GetMeshData(const std::string& MeshName) const
+	const FMeshData& FGameResource::GetMeshData(const std::string& MeshName) const
 	{
 		auto MeshDataIt = StaticMeshesData.find(MeshName);
 		if (MeshDataIt == StaticMeshesData.end())
@@ -141,22 +176,43 @@ namespace WoodenEngine
 		return *MeshDataIt->second;
 	}
 
-	default::uint64 FGameResources::GetNumMaterials() const noexcept
+	default::uint64 FGameResource::GetNumMaterials() const noexcept
 	{
 		return MaterialsData.size();
 	}
 
-	const FGameResources::FMaterialsData& FGameResources::GetMaterialsData() const noexcept
+	const FGameResource::FMaterialsData& FGameResource::GetMaterialsData() const noexcept
 	{
 		return MaterialsData;
 	}
 
-	D3D12_VERTEX_BUFFER_VIEW FGameResources::GetVertexBufferView() const noexcept
+	const WoodenEngine::FGameResource::FTexturesData& FGameResource::GetTexturesData() const noexcept
+	{
+		return TexturesData;
+	}
+
+	const FTextureData* FGameResource::GetTextureData(const std::string& Name) const
+	{
+		auto TextureDataIter = TexturesData.find(Name);
+		if (TextureDataIter == TexturesData.end())
+		{
+			throw std::invalid_argument("Texture with name " + Name + " doesn't exist");
+		}
+
+		return TextureDataIter->second.get();
+	}
+
+	const uint32 FGameResource::GetNumTexturesData() const noexcept
+	{
+		return TexturesData.size();
+	}
+
+	D3D12_VERTEX_BUFFER_VIEW FGameResource::GetVertexBufferView() const noexcept
 	{
 		return VertexBufferView;
 	}
 
-	D3D12_INDEX_BUFFER_VIEW FGameResources::GetIndexBufferView() const noexcept
+	D3D12_INDEX_BUFFER_VIEW FGameResource::GetIndexBufferView() const noexcept
 	{
 		return IndexBufferView;
 	}

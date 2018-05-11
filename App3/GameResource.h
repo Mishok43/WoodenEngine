@@ -7,6 +7,7 @@
 #include "ShaderStructures.h"
 #include "MeshData.h"
 #include "MaterialData.h"
+#include "TextureData.h"
 
 namespace WoodenEngine
 {
@@ -19,7 +20,7 @@ namespace WoodenEngine
 	 * \author devmi
 	 * \date April 2018
 	 */
-	class FGameResources
+	class FGameResource
 	{
 	public: 
 		using FMaterialsData = 
@@ -28,13 +29,16 @@ namespace WoodenEngine
 		using FMeshesData =
 			std::unordered_map<std::string, std::unique_ptr<FMeshData>>;
 
-		FGameResources();
-		FGameResources(ComPtr<ID3D12Device> Device);
-		~FGameResources();
+		using FTexturesData =
+			std::unordered_map<std::string, std::unique_ptr<FTextureData>>;
 
-		FGameResources& operator=(const FGameResources& GameResources) = delete;
-		FGameResources(const FGameResources& GameResources) = delete;
-		FGameResources(FGameResources&& GameResources) = delete;
+		FGameResource();
+		FGameResource(ComPtr<ID3D12Device> Device);
+		~FGameResource();
+
+		FGameResource& operator=(const FGameResource& GameResources) = delete;
+		FGameResource(const FGameResource& GameResources) = delete;
+		FGameResource(FGameResource&& GameResources) = delete;
 
 
 		/** @brief Method set dx12 device. It'll be used for comitting resources
@@ -61,6 +65,13 @@ namespace WoodenEngine
 		void AddMaterial(std::unique_ptr<FMaterialData> MaterialData);
 
 
+		/** @brief Loads texture data to gpu memory
+		  * @param FileName Texture's file name (const std::wstring &)
+		  * @param Name Texture's name (const std::string &)
+		  * @return (void)
+		  */
+		void LoadTexture(const std::wstring& FileName, const std::string& Name, ComPtr<ID3D12GraphicsCommandList> CmdList);
+
 		/** @brief Finds a material data by name and returns it's iConstBuffer
 		  * @param MaterialName (const std::string &)
 		  * @return Const Buffer Index (default::uint64)
@@ -86,10 +97,25 @@ namespace WoodenEngine
 		uint64 GetNumMaterials() const noexcept;
 
 		/** @brief Returns materials data
-		  * @return (const std::unordered_map<std::string, WoodenEngine::FMaterialData>&)
+		  * @return Material Data (const WoodenEngine::FGameResource::FMaterialsData&)
 		  */
 		const FMaterialsData& GetMaterialsData() const noexcept;
 
+		/** @brief Returns textures data
+		  * @return Textures data (const WoodenEngine::FGameResource::FTexturesData&)
+		  */
+		const FTexturesData& GetTexturesData() const noexcept;
+
+		/** @brief Returns texture data
+		  * @param Name Texture Name (const std::string&)
+		  * @return Texture data (const FTextureData*)
+		  */
+		const FTextureData* GetTextureData(const std::string& Name) const;
+
+		/** @brief Returns number of textures data in cache
+		  * @return Number of textures data (const uint32)
+		  */
+		const uint32 GetNumTexturesData() const noexcept;
 
 		/** @brief Returns vertex buffer view
 		  * @return Vertex buffer view (D3D12_VERTEX_BUFFER_VIEW)
@@ -106,6 +132,9 @@ namespace WoodenEngine
 		
 		// Hash-table consists of materials data, where key is a material's name
 		FMaterialsData MaterialsData;
+
+		// Hash-table consists of textures data, where key is a texture's name
+		FTexturesData TexturesData;
 
 		// Dynamic array of all static meshes' vertices 
 		std::vector<SVertexData> VerticesData;
@@ -127,5 +156,5 @@ namespace WoodenEngine
 		ComPtr<ID3D12Resource> IndexUploadBuffer;
 
 		D3D12_INDEX_BUFFER_VIEW IndexBufferView;
-	};
+		};
 }

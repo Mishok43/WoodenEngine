@@ -6,13 +6,13 @@ namespace WoodenEngine
 		const float WindowWidth,
 		const float WindowHeight,
 		const float DefaultXAngle/* =DirectX::XM_PI/3.0f */,
-		const float DefaultZAngle/* =DirectX::XM_PIDIV2 */,
+		const float DefaultYAngle/* =DirectX::XM_PIDIV2 */,
 		const float DefaultRadius/* =10.0 */)
 		:
 		WindowWidth(WindowWidth),
 		WindowHeight(WindowHeight),
 		XAngle(DefaultXAngle),
-		ZAngle(DefaultZAngle),
+		YAngle(DefaultYAngle),
 		ViewRadius(DefaultRadius)
 	{
 		bIsRenderable = false;
@@ -32,9 +32,10 @@ namespace WoodenEngine
 	void WCamera::UpdateViewMatrix() noexcept
 	{
 		XMFLOAT4 CameraPosition = {};
-		CameraPosition.x = XMScalarCos(ZAngle)*XMScalarSin(XAngle)*ViewRadius;
-		CameraPosition.y = XMScalarSin(ZAngle)*XMScalarSin(XAngle)*ViewRadius;
-		CameraPosition.z = XMScalarCos(XAngle)*ViewRadius;
+
+		CameraPosition.x = XMScalarSin(YAngle)*XMScalarSin(XAngle)*ViewRadius;
+		CameraPosition.y = XMScalarCos(XAngle)*ViewRadius;
+		CameraPosition.z = XMScalarCos(YAngle)*XMScalarSin(XAngle)*ViewRadius;
 		CameraPosition.w = 1.0f;
 
 		XMFLOAT4 CameraFocus = { 0.0f, 0.0f, 0.0f, 1.0f };
@@ -52,7 +53,7 @@ namespace WoodenEngine
 		const auto dPhi = dx / WindowWidth*DirectX::XM_PI;
 		const auto dTheta = dy / WindowHeight*DirectX::XM_PIDIV2;
 
-		ZAngle += dPhi;
+		YAngle += dPhi;
 		XAngle += dTheta;
 
 		UpdateViewMatrix();
