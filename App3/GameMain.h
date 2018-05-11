@@ -28,7 +28,7 @@ namespace WoodenEngine
 		FGameMain(const FGameMain& GameMain) = delete;
 		FGameMain& operator=(const FGameMain& GameMain) = delete;
 
-		virtual ~FGameMain();
+		~FGameMain();
 
 		/** @brief Called every frame before rendering. 
 		  * It contains rendering logic
@@ -107,7 +107,7 @@ namespace WoodenEngine
 
 		void UpdateFrameConstBuffer();
 
-		std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> GetStaticSamplers();
+		std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> GetStaticSamplers() const;
 
 		WCamera* Camera;
 
@@ -125,8 +125,6 @@ namespace WoodenEngine
 		FFrameResource* CurrFrameResource;
 
 		std::vector<WObject*>  Objects; 
-
-
 
 		std::unique_ptr<FGameResource> GameResources;
 		std::unique_ptr<FFrameResource> FramesResource[NMR_SWAP_BUFFERS];

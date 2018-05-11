@@ -71,7 +71,6 @@ namespace WoodenEngine
 
 	void WObject::InputMouseMoved(const float dx, const float dy) noexcept
 	{
-		
 	}
 
 	void WObject::SetEnableInputEvents(const bool EnableInput) noexcept
@@ -99,14 +98,24 @@ namespace WoodenEngine
 		bIsUpdating = IsUpdating;
 	}
 
+	void WObject::SetIsVisible(const bool IsVisible) noexcept
+	{
+		bIsVisible = IsVisible;
+	}
+
 	void WObject::SetIsRenderable(const bool Renderable) noexcept
 	{
 		bIsRenderable = Renderable;
 	}
 
-	void WObject::SetMaterialTrasnform(const XMFLOAT4X4& MaterialTransform) noexcept
+	void WObject::SetWaterFactor(int WaterFactor) noexcept
 	{
-		this->MaterialTransform = MaterialTransform;
+		this->WaterFactor = WaterFactor;
+	}
+
+	void WObject::SetTextureTransform(const XMFLOAT4X4& TextureTransform) noexcept
+	{
+		this->TextureTransform = TextureTransform;
 	}
 
 	void WObject::SetConstBufferIndex(const uint64 Index) noexcept
@@ -136,9 +145,9 @@ namespace WoodenEngine
 		return Material;
 	}
 
-	const XMFLOAT4X4& WObject::GetMaterialTransform() const noexcept
+	const XMFLOAT4X4& WObject::GetTextureTransform() const noexcept
 	{
-		return MaterialTransform;
+		return TextureTransform;
 	}
 
 	const XMMATRIX& WObject::GetWorldMatrix() const noexcept
@@ -171,9 +180,18 @@ namespace WoodenEngine
 		return Color;
 	}
 
+	int WObject::GetWaterFactor() const noexcept
+	{
+		return WaterFactor;
+	}
+
 	float WObject::GetLifeTime() const noexcept
 	{
 		return LifeTime;
 	}
 
+	bool WObject::IsVisible() const noexcept
+	{
+		return IsVisible();
+	}
 }

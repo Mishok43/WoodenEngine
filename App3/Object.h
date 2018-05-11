@@ -133,17 +133,28 @@ namespace WoodenEngine
 			  */
 			void SetIsRenderable(const bool Renderable) noexcept;
 
-
-			/** @brief Sets transform matrix for object's material
-			  * @param MaterialTransform Material transform matrix (const XMFLOAT4x4 &)
+			/** @brief Set water factor
+			  * @param WaterFactor (int)
 			  * @return (void)
 			  */
-			void SetMaterialTrasnform(const XMFLOAT4X4& MaterialTransform) noexcept;
+			void SetWaterFactor(int WaterFactor) noexcept;
+
+			/** @brief Sets transform matrix for object's tex coordinates
+			  * @param TextureTransform TexCoordinates transform matrix (const XMFLOAT4x4 &)
+			  * @return (void)
+			  */
+			void SetTextureTransform(const XMFLOAT4X4& TextureTransform) noexcept;
 
 			/** @brief Set flag update method is calling
 			  * @return (void)
 			  */
 			void SetIsUpdating(const bool IsUpdating) noexcept;
+
+			/** @brief Sets visibility
+			  * @param IsVisible Visibility (const bool)
+			  * @return (void)
+			  */
+			void SetIsVisible(const bool IsVisible) noexcept;
 
 			/** @brief Returns object's world matrix for rendering
 			  * @return World matrix (DirectX::XMMATRIX)
@@ -175,10 +186,10 @@ namespace WoodenEngine
 			  */
 			const FMaterialData* GetMaterial() const noexcept;
 
-			/** @brief Returns material transform matrix
-			  * @return material transform matrix (const DirectX::XMFLOAT4X4&)
+			/** @brief Returns texture's coordinates transform matrix
+			  * @return texture's coordinates transform matrix (const DirectX::XMFLOAT4X4&)
 			  */
-			const XMFLOAT4X4& GetMaterialTransform() const noexcept;
+			const XMFLOAT4X4& GetTextureTransform() const noexcept;
 
 			/** @brief Returns flag if object is supposed to be rendered to the screen
 			  * @return true - renderable/false - not(bool)
@@ -200,12 +211,24 @@ namespace WoodenEngine
 			  */
 			const XMFLOAT4& GetColor() const noexcept;
 
+			/** @brief Returns water factor
+			  * @return water factor (int)
+			  */
+			int GetWaterFactor() const noexcept;
 
 			/** @brief Returns object's life time 
 			  * @return Life time (float)
 			  */
 			float GetLifeTime() const noexcept;
+
+			/** @brief Returns visibility
+			  * @return visibility (bool)
+			  */
+			bool IsVisible() const noexcept;
 		protected:
+			// Flags if objects is hidden/visible or not
+			bool bIsVisible = true;
+
 			// Flags if update method is executing or not
 			bool bIsUpdating = true;
 
@@ -230,8 +253,8 @@ namespace WoodenEngine
 			// Vector with an absolute scale in the world (default: 1.0f, 1.0f, 1.0f)
 			XMFLOAT3 Scale = MathHelper::Identity3();
 			
-			// Material transform matrix
-			XMFLOAT4X4 MaterialTransform = MathHelper::Identity4x4();
+			// Texture coordinates transform matrix
+			XMFLOAT4X4 TextureTransform = MathHelper::Identity4x4();
 
 			// Life time in seconds
 			float LifeTime = 0;
@@ -247,6 +270,8 @@ namespace WoodenEngine
 
 			// Number not updated const buffers
 			uint8 NumDirtyConstBuffers = NMR_SWAP_BUFFERS;
+
+			int WaterFactor = 1;
 
 			/** @brief Recomputes the world matrix considering Position, Rotation and Scale in the world
 			  * @return (void)

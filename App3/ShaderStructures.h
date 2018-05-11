@@ -80,6 +80,8 @@ namespace WoodenEngine
 
 		// Cruch. 
 		int IsWater = false;
+
+		int WaterFactor = 1.0f;
 	}; // 84B
 
 	struct SVertexData

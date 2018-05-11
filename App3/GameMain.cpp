@@ -9,13 +9,13 @@
 #include "Common/DirectXHelper.h"
 #include "ShaderStructures.h"
 
+#define _DEBUG
+
 namespace WoodenEngine
 {
 	using namespace Windows::Foundation;
 	using namespace Windows::System::Threading;
 	using namespace Concurrency;
-
-#define _DEBUG
 
 	FGameMain::FGameMain()
 	{
@@ -24,7 +24,6 @@ namespace WoodenEngine
 	FGameMain::~FGameMain()
 	{
 	}
-
 
 	bool FGameMain::Initialize(Windows::UI::Core::CoreWindow^ outWindow)
 	{
@@ -307,9 +306,9 @@ namespace WoodenEngine
 
 		auto* WaterObject = new WObject(PlaneMeshName);
 
-		XMFLOAT4X4 c;
-		XMStoreFloat4x4(&c, XMMatrixScaling(5.0f, 5.0f, 1.0f));
-		WaterObject->SetMaterialTrasnform(c);
+		XMFLOAT4X4 TextureTransform;
+		XMStoreFloat4x4(&TextureTransform, XMMatrixScaling(5.0f, 5.0f, 1.0f));
+		WaterObject->SetTextureTransform(std::move(TextureTransform));
 		WaterObject->SetPosition(0, 0, 0);
 		WaterObject->SetConstBufferIndex(0);
 		WaterObject->SetMaterial(GameResources->GetMaterialData("water"));
@@ -318,20 +317,22 @@ namespace WoodenEngine
 		// Create objects
 		auto* BoxObject = new WObject(BoxMeshName);
 		BoxObject->SetConstBufferIndex(1);
-		BoxObject->SetPosition(-5.0f, 0.5f, 0.0f);
+		BoxObject->SetPosition(-5.0f, 0.2f, 0.0f);
 		BoxObject->SetMaterial(GameResources->GetMaterialData("crate"));
 		Objects.push_back(BoxObject);
 
 		auto* SphereObject = new WObject(SphereMeshName);
 		SphereObject->SetConstBufferIndex(2);
-		SphereObject->SetPosition(2.5f, 0, 2.0f);
+		SphereObject->SetPosition(2.5f, 0.2f, 2.0f);
+		SphereObject->SetWaterFactor(-1.0);
 		SphereObject->SetMaterial(GameResources->GetMaterialData("crate"));
 		Objects.push_back(SphereObject);
 	
 		auto* SkullObject = new WObject(SkullMeshName);
 		SkullObject->SetConstBufferIndex(3);
-		SkullObject->SetPosition({ -1.5f, 0, 0.0f });
+		SkullObject->SetPosition({ -1.5f, -0.5f, 0.0f });
 		SkullObject->SetScale(0.5f, 0.5f, 0.5f);
+		SkullObject->SetWaterFactor(-1.0);
 		SkullObject->SetMaterial(GameResources->GetMaterialData("skull"));
 		Objects.push_back(SkullObject);
 
@@ -440,40 +441,40 @@ namespace WoodenEngine
 		Shaders["opaquePS"] = DX::CompileShader(L"Shaders\\color.hlsl", nullptr, "PS", "ps_5_0");
 	}
 
-	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> FGameMain::GetStaticSamplers()
+	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> FGameMain::GetStaticSamplers() const
 	{
 		// Applications usually only need a handful of samplers.  So just define them all up front
 		// and keep them available as part of the root signature.  
 
-		const CD3DX12_STATIC_SAMPLER_DESC pointWrap(
+		const CD3DX12_STATIC_SAMPLER_DESC PointWrap(
 			0, // shaderRegister
 			D3D12_FILTER_MIN_MAG_MIP_POINT, // filter
 			D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressU
 			D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressV
 			D3D12_TEXTURE_ADDRESS_MODE_WRAP); // addressW
 
-		const CD3DX12_STATIC_SAMPLER_DESC pointClamp(
+		const CD3DX12_STATIC_SAMPLER_DESC PointClamp(
 			1, // shaderRegister
 			D3D12_FILTER_MIN_MAG_MIP_POINT, // filter
 			D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressU
 			D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressV
 			D3D12_TEXTURE_ADDRESS_MODE_CLAMP); // addressW
 
-		const CD3DX12_STATIC_SAMPLER_DESC linearWrap(
+		const CD3DX12_STATIC_SAMPLER_DESC LinearWrap(
 			2, // shaderRegister
 			D3D12_FILTER_MIN_MAG_MIP_LINEAR, // filter
 			D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressU
 			D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressV
 			D3D12_TEXTURE_ADDRESS_MODE_WRAP); // addressW
 
-		const CD3DX12_STATIC_SAMPLER_DESC linearClamp(
+		const CD3DX12_STATIC_SAMPLER_DESC LinearClamp(
 			3, // shaderRegister
 			D3D12_FILTER_MIN_MAG_MIP_LINEAR, // filter
 			D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressU
 			D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressV
 			D3D12_TEXTURE_ADDRESS_MODE_CLAMP); // addressW
 
-		const CD3DX12_STATIC_SAMPLER_DESC anisotropicWrap(
+		const CD3DX12_STATIC_SAMPLER_DESC AnisotropicWrap(
 			4, // shaderRegister
 			D3D12_FILTER_ANISOTROPIC, // filter
 			D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressU
@@ -482,7 +483,7 @@ namespace WoodenEngine
 			0.0f,                             // mipLODBias
 			8);                               // maxAnisotropy
 
-		const CD3DX12_STATIC_SAMPLER_DESC anisotropicClamp(
+		const CD3DX12_STATIC_SAMPLER_DESC AnisotropicClamp(
 			5, // shaderRegister
 			D3D12_FILTER_ANISOTROPIC, // filter
 			D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressU
@@ -492,52 +493,62 @@ namespace WoodenEngine
 			8);                                // maxAnisotropy
 
 		return {
-			pointWrap, pointClamp,
-			linearWrap, linearClamp,
-			anisotropicWrap, anisotropicClamp };
+			PointWrap, PointClamp,
+			LinearWrap, LinearClamp,
+			AnisotropicWrap, AnisotropicClamp };
 	}
 
 
 	void FGameMain::BuildRootSignature()
 	{
-		CD3DX12_DESCRIPTOR_RANGE range1;
-		range1.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0);
+		// Initialize parameters
 
-		// per object data
-		CD3DX12_ROOT_PARAMETER parameter1;
-		parameter1.InitAsConstantBufferView(0);
+		// per object const buffer
+		CD3DX12_ROOT_PARAMETER ObjectDataParameter;
+		ObjectDataParameter.InitAsConstantBufferView(0);
 
-		// material data
-		CD3DX12_ROOT_PARAMETER parameter2;
-		parameter2.InitAsConstantBufferView(1);
+		// material const buffer
+		CD3DX12_ROOT_PARAMETER MaterialDataParameter;
+		MaterialDataParameter.InitAsConstantBufferView(1);
 
-		// frame data
-		CD3DX12_DESCRIPTOR_RANGE range3;
-		range3.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 2);
+		// frame const buffer
+		CD3DX12_ROOT_PARAMETER FrameDataParameter;
+		FrameDataParameter.InitAsConstantBufferView(2);
 
-		CD3DX12_ROOT_PARAMETER parameter3;
-		parameter3.InitAsConstantBufferView(2);
+		// diffuse texture
+		CD3DX12_DESCRIPTOR_RANGE DiffuseTexturesRange;
+		DiffuseTexturesRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
 
-		CD3DX12_DESCRIPTOR_RANGE range4;
-		range4.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
+		CD3DX12_ROOT_PARAMETER diffuseTexturesDataParameter;
+		diffuseTexturesDataParameter.InitAsDescriptorTable(
+			1, &DiffuseTexturesRange, D3D12_SHADER_VISIBILITY_PIXEL);
 
-		CD3DX12_ROOT_PARAMETER parameter4;
-		parameter4.InitAsDescriptorTable(1, &range4, D3D12_SHADER_VISIBILITY_PIXEL);
+		auto Parameters = { 
+			ObjectDataParameter,
+			MaterialDataParameter, 
+			FrameDataParameter,
+			diffuseTexturesDataParameter };
 
-		auto parameters = { parameter1, parameter2, parameter3, parameter4};
-
-		CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc;
-		rootSignatureDesc.Init(4, parameters.begin(), 6, GetStaticSamplers().data(), D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+		// Initialize root signature
+		CD3DX12_ROOT_SIGNATURE_DESC RootSignatureDesc;
+		RootSignatureDesc.Init(
+			4, Parameters.begin(), 6, GetStaticSamplers().data(), 
+			D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
 		ComPtr<ID3DBlob> rootSignatureBlob = nullptr;
 		ComPtr<ID3DBlob> rootSignatureBlobError = nullptr;
-		DX::ThrowIfFailed(D3D12SerializeRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &rootSignatureBlob, &rootSignatureBlobError));
+		DX::ThrowIfFailed(D3D12SerializeRootSignature(
+			&RootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, 
+			&rootSignatureBlob, &rootSignatureBlobError));
+
 		if (rootSignatureBlobError != nullptr)
 		{
-			throw std::invalid_argument("EX");
+			throw std::invalid_argument("Root signature hasn't been initialized correctly");
 		}
 
-		DX::ThrowIfFailed(Device->CreateRootSignature(0, rootSignatureBlob->GetBufferPointer(), rootSignatureBlob->GetBufferSize(), IID_PPV_ARGS(&RootSignature)));
+		DX::ThrowIfFailed(Device->CreateRootSignature(
+			0, rootSignatureBlob->GetBufferPointer(), 
+			rootSignatureBlob->GetBufferSize(), IID_PPV_ARGS(&RootSignature)));
 	}
 
 	void FGameMain::BuildPipelineStateObject()
@@ -611,13 +622,14 @@ namespace WoodenEngine
 				auto WorldMatrix = Object->GetWorldMatrix();
 				XMStoreFloat4x4(&ObjectShaderData.WorldMatrix, XMMatrixTranspose(WorldMatrix));
 				
-				auto MaterialTransform = Object->GetMaterialTransform();
+				auto MaterialTransform = Object->GetTextureTransform();
 				XMStoreFloat4x4(&ObjectShaderData.MaterialTransform, XMLoadFloat4x4(&MaterialTransform));
 
 				ObjectShaderData.Time = Object->GetLifeTime();
 				
-				// Cruch!
+				// Crunch!!!!!!!!!!!!!!!!!!!!!!!!!!!
 				ObjectShaderData.IsWater = Object->GetMaterial()->Name == "water";
+				ObjectShaderData.WaterFactor = Object->GetWaterFactor();
 
 				ObjectsBuffer->CopyData(Object->GetConstBufferIndex(), ObjectShaderData);
 
@@ -710,15 +722,12 @@ namespace WoodenEngine
 
 		CmdList->SetGraphicsRootSignature(RootSignature.Get());
 
-		ID3D12DescriptorHeap* cbvDescriptorHeaps[] = {  SRVDescriptorHeap.Get()};
-		CmdList->SetDescriptorHeaps(_countof(cbvDescriptorHeaps), cbvDescriptorHeaps);
+		ID3D12DescriptorHeap* srvDescriptorHeaps[] = {  SRVDescriptorHeap.Get()};
+		CmdList->SetDescriptorHeaps(_countof(srvDescriptorHeaps), srvDescriptorHeaps);
 
-		// Set frame const buffer as argumet to shader
-		auto CBVGPUHandle = CD3DX12_GPU_DESCRIPTOR_HANDLE{
-			CBVDescriptorHeap->GetGPUDescriptorHandleForHeapStart() };
-		CBVGPUHandle.Offset(Objects.size()*NMR_SWAP_BUFFERS + iCurrFrameResource,
-			CBVSRVDescriptorHandleIncrementSize);
-		CmdList->SetGraphicsRootConstantBufferView(2, CurrFrameResource->FrameDataBuffer->Resource()->GetGPUVirtualAddress());
+		// Set frame const buffer as argument to shader
+		auto FrameDataResAddress = CurrFrameResource->FrameDataBuffer->Resource()->GetGPUVirtualAddress();
+		CmdList->SetGraphicsRootConstantBufferView(2, FrameDataResAddress);
 
 		CmdList->RSSetViewports(1, &ScreenViewport);
 		CmdList->RSSetScissorRects(1, &ScissorRect);
@@ -743,24 +752,16 @@ namespace WoodenEngine
 			const auto& MeshName = Object->GetMeshName();
 			const auto MeshData = GameResources->GetMeshData(MeshName);
 
-			auto ObjectCBVHandle = CD3DX12_GPU_DESCRIPTOR_HANDLE{
-				CBVDescriptorHeap->GetGPUDescriptorHandleForHeapStart() };
-			ObjectCBVHandle.Offset(Objects.size()*iCurrFrameResource + Object->GetConstBufferIndex(),
-				CBVSRVDescriptorHandleIncrementSize);
+			auto ObjectDataResAddress =
+				CurrFrameResource->ObjectsDataBuffer->Resource()->GetGPUVirtualAddress() +
+				Object->GetConstBufferIndex()*CurrFrameResource->ObjectsDataBuffer->GetElementByteSize();
 
-			CmdList->SetGraphicsRootConstantBufferView(0, 
-				CurrFrameResource->ObjectsDataBuffer->Resource()->GetGPUVirtualAddress()+
-				Object->GetConstBufferIndex()*CurrFrameResource->ObjectsDataBuffer->GetElementByteSize());
-
-			//CmdList->SetGraphicsRootDescriptorTable(0, ObjectCBVHandle);
+			CmdList->SetGraphicsRootConstantBufferView(0, ObjectDataResAddress);
 
 			auto MaterialsResAddress =
 				CurMaterialsResource->Resource()->GetGPUVirtualAddress() +
 				Object->GetMaterial()->iConstBuffer*CurMaterialsResource->GetElementByteSize();
-
 			CmdList->SetGraphicsRootConstantBufferView(1, MaterialsResAddress);
-
-
 
 			auto DiffuseTexSRVHandle = CD3DX12_GPU_DESCRIPTOR_HANDLE{
 				SRVDescriptorHeap->GetGPUDescriptorHandleForHeapStart()
