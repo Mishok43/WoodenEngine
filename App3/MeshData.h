@@ -149,6 +149,21 @@ namespace WoodenEngine
 		) const noexcept;
 
 
+		/** @brief Generates a landscape grid based of function:
+		  * y = 3(sin(x) + cos(z))
+		  * @param Width (float)
+		  * @param Height (float)
+		  * @param NumVSubdivisions (uint32)
+		  * @param NumHSubdivisions (uint32)
+		  * @return (std::unique_ptr<WoodenEngine::FMeshData>)
+		  */
+		std::unique_ptr<FMeshData> CreateLandscapeGrid(
+			float Width,
+			float Height,
+			uint32 NumVSubdivisions,
+			uint32 NumHSubdivisions
+		) const noexcept;
+
 		/** @brief Subdivide mesh data (every triangle of it's to 3 triangles)
 		  * @param MeshData Mesh data (FMeshData* MeshData)
 		  * @return (void)

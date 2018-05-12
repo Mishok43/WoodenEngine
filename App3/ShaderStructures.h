@@ -39,25 +39,29 @@ namespace WoodenEngine
 		// Matrix converts world coordinates to projected coordinates
 		XMFLOAT4X4 ViewProjMatrix;
 
+		// 16 - max lights amount
+		SLightData Lights[16];
+
 		// Camera's world coordinates
 		XMFLOAT3 CameraPosition;
-
 		
 		float GameTime;
 
 		// 'Whole-scene' light
-		XMFLOAT4 AmbientLight;
-		
-		// 16 - max lights amount
-		SLightData Lights[16];
+		XMFLOAT4 AmbientLight = { 0.35f, 0.35f, 0.35f, 1.0f };
 
+		// Fog color
+		XMFLOAT4 FogColor = { 0.5f, 0.5f, 0.5f, 0.0f };
+
+		// Distance from camera to fog start
+		float FogStart = 4;
+
+		// Distance from fog start to fog end
+		float FogRange = 100;
 	};
 
 	struct SMaterialData
 	{
-		// Tex UV Coordinates transform matrix
-		XMFLOAT4X4 MaterialTransform;
-
 		XMFLOAT4 DiffuzeAlbedo = { 1.0f, 1.0f, 1.0f, 1.0f };
 
 		// For specular reflection
@@ -65,6 +69,8 @@ namespace WoodenEngine
 
 		float Roughness = 0.25f;
 
+		// Tex UV Coordinates transform matrix
+		XMFLOAT4X4 MaterialTransform;
 	};
 
 	struct SObjectData

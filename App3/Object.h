@@ -61,6 +61,18 @@ namespace WoodenEngine
 			*/
 			virtual void InputMouseMoved(const float dx, const float dy) noexcept;
 
+			/** @brief Called when a key was pressed
+			  * @param key Pressed key (char)
+			  * @return (void)
+			  */
+			virtual void InputKeyPressed(char key) noexcept;
+
+			/** @brief Called when a key was released
+			  * @param key Released key (char)
+			  * @return (void)
+			  */
+			virtual void InputKeyReleased(char key) noexcept;
+
 			/** @brief Sets object's index in shader const buffer
 			  * @param Index Object's index in shader const buffer(const uint64)
 			  * @return (void)

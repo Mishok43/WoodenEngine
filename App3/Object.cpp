@@ -73,6 +73,15 @@ namespace WoodenEngine
 	{
 	}
 
+	void WObject::InputKeyPressed(char key) noexcept
+	{
+
+	}
+
+	void WObject::InputKeyReleased(char key) noexcept
+	{
+	}
+
 	void WObject::SetEnableInputEvents(const bool EnableInput) noexcept
 	{
 		bIsEnabledInputEvents = EnableInput;
@@ -192,6 +201,8 @@ namespace WoodenEngine
 
 	bool WObject::IsVisible() const noexcept
 	{
-		return IsVisible();
+		return bIsVisible;
 	}
+
+
 }

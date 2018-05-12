@@ -156,7 +156,7 @@ namespace WoodenEngine
 		return MaterialDataIt->second->iConstBuffer;
 	}
 
-	const FMaterialData* FGameResource::GetMaterialData(const std::string& MaterialName) const
+	FMaterialData* FGameResource::GetMaterialData(const std::string& MaterialName) const
 	{
 		auto MaterialDataIt = MaterialsData.find(MaterialName);
 		if (MaterialDataIt == MaterialsData.end())

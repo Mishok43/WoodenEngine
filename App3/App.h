@@ -1,7 +1,6 @@
 ﻿#pragma once
 
 #include "pch.h"
-#include "Common\DeviceResources.h"
 #include "Common\StepTimer.h"
 #include "GameMain.h"
 
@@ -37,6 +36,9 @@ namespace WoodenEngine
 		void OnDisplayContentsInvalidated(Windows::Graphics::Display::DisplayInformation^ sender, Platform::Object^ args);
 
 		void OnMouseMoved(Windows::Devices::Input::MouseDevice^ mouseDevice, Windows::Devices::Input::MouseEventArgs^ args);
+		void OnKeyPressed(Windows::UI::Core::CoreWindow^ coreWindow, Windows::UI::Core::KeyEventArgs^ pointerEventArgs);
+		void OnKeyReleased(Windows::UI::Core::CoreWindow^ coreWindow, Windows::UI::Core::KeyEventArgs^ pointerEventArgs);
+
 		void OnPointerPressed(Windows::UI::Core::CoreWindow^ coreWindow, Windows::UI::Core::PointerEventArgs^ pointerEventArgs);
 		void OnPointerReleased(Windows::UI::Core::CoreWindow^ coreWindow, Windows::UI::Core::PointerEventArgs^ pointerEventArgs);
 

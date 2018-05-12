@@ -7,7 +7,7 @@
 
 #include "EngineSettings.h"
 #include "pch.h"
-
+#include "ShaderStructures.h"
 #include "FrameResource.h"
 #include "GameResource.h"
 
@@ -41,12 +41,34 @@ namespace WoodenEngine
 		  * @param dy Delta Y (const float)
 		  * @return (void)
 		  */
-		void MouseMoved(const float dx, const float dy) noexcept;
+		void InputMouseMoved(const float dx, const float dy) noexcept;
 
-		/** @brief Called every frame
+		/** @brief Called when a key was pressed
+		  * @param key Key (char)
+		  * @return (void)
+		  */
+		void InputKeyPressed(char key);
+
+		/** @brief Called when a key was pressed
+		  * @param key Key (char)
+		  * @return (void)
+		  */
+		void InputKeyReleased(char key);
+
+		/** @brief Renders game view. Is called every frame
 		  * @return (void)
 		  */
 		void Render();
+
+		/** @brief Renders list of objects
+		  * @param RenderableObjects List of renderable objects(const std::vector<WObject * > &)
+		  * @param CMDList Current command list for sending commands(ComPtr<ID3D12GraphicsCommandList>)
+		  * @return (void)
+		  */
+		void RenderObjects(
+			const std::vector<WObject*>& RenderableObjects,
+			ComPtr<ID3D12GraphicsCommandList> CMDList
+		);
 
 		/** @brief Init dx12 device and other components
 		  * @param outputWindow (Windows::UI::Core::CoreWindow ^)
@@ -54,6 +76,14 @@ namespace WoodenEngine
 		  */
 		bool Initialize(Windows::UI::Core::CoreWindow^ outputWindow);
 	private:
+		enum class ERenderLayer: uint8
+		{
+			Opaque = 0,
+			Transparent,
+			AlphaTested,
+			Count
+		};
+
 		ID3D12Resource* CurrentBackBuffer() const;
 		
 		D3D12_CPU_DESCRIPTOR_HANDLE CurrentBackBufferView() const;
@@ -86,6 +116,8 @@ namespace WoodenEngine
 
 		void InitViewport();
 
+		void AnimateWaterMaterial();
+
 		// Create RTV for every frame
 		void BuildFrameResources();
 
@@ -114,7 +146,7 @@ namespace WoodenEngine
 		// DX12 Device
 		ComPtr<ID3D12Device> Device;
 
-		ComPtr<ID3D12GraphicsCommandList> CmdList;
+		ComPtr<ID3D12GraphicsCommandList> CMDList;
 		ComPtr<ID3D12CommandAllocator> CmdAllocatorDefault;
 		ComPtr<ID3D12CommandQueue> CmdQueue;
 		
@@ -124,18 +156,21 @@ namespace WoodenEngine
 		uint8 iCurrFrameResource = 0;
 		FFrameResource* CurrFrameResource;
 
-		std::vector<WObject*>  Objects; 
+		std::vector<std::unique_ptr<WObject>> Objects;
+		std::vector<WObject*> RenderableObjects[(uint8)ERenderLayer::Count];
 
 		std::unique_ptr<FGameResource> GameResources;
 		std::unique_ptr<FFrameResource> FramesResource[NMR_SWAP_BUFFERS];
+
+		SFrameData ConstFrameData;
 
 		ComPtr<ID3D12Resource> SwapChainBuffers[NMR_SWAP_BUFFERS];
 		ComPtr<ID3D12Resource> DepthStencilBuffer;
 
 		ComPtr<ID3D12RootSignature> RootSignature;
 
-		ComPtr<ID3D12PipelineState> PSO;
-
+		std::unordered_map<std::string, ComPtr<ID3D12PipelineState>> PipelineStates;
+		
 		uint16 RTVDescriptorHandleIncrementSize = 0;
 		uint16 DSVDescriptorHandleIncrementSize = 0;
 		uint16 CBVSRVDescriptorHandleIncrementSize = 0;

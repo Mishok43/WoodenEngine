@@ -63,8 +63,6 @@ namespace WoodenEngine
 		  * @return (void)
 		  */
 		void AddMaterial(std::unique_ptr<FMaterialData> MaterialData);
-
-
 		/** @brief Loads texture data to gpu memory
 		  * @param FileName Texture's file name (const std::wstring &)
 		  * @param Name Texture's name (const std::string &)
@@ -82,7 +80,7 @@ namespace WoodenEngine
 		  * @param MaterialName (const std::string &)
 		  * @return Material Data(const WoodenEngine::FMaterialData&)
 		  */
-		const FMaterialData* GetMaterialData(const std::string& MaterialName) const;
+		FMaterialData* GetMaterialData(const std::string& MaterialName) const;
 
 		/** @brief Find a mesh data by name and returns it.
 		  * Throws exception if no mesh data is associated with the name 

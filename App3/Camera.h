@@ -17,12 +17,17 @@ namespace WoodenEngine
 	public:
 		WCamera(
 			const float WindowWidth,
-			const float WindowHeight,
-			const float DefaultXAngle=XM_PIDIV4,
-			const float DefaultYAngle= 2.55f,
-			const float DefaultRadius=25.0f);
+			const float WindowHeight);
 
 		virtual void Update(float Delta) override;
+
+		void WalkForward(float Speed);
+
+		void WalkRight(float Speed);
+
+		void LookUp(float Angle);
+
+		void LookRight(float Angle);
 
 		/** @brief Moves camera view
 		  * @param dx (const float)
@@ -30,6 +35,18 @@ namespace WoodenEngine
 		  * @return (void)
 		  */
 		virtual void InputMouseMoved(const float dx, const float dy) noexcept override;
+
+		/** @brief Start moving forward/right
+		  * @param key (char)
+		  * @return (void)
+		  */
+		virtual void InputKeyPressed(char key) noexcept override;
+
+		/** @brief Stop moving forward/right
+		  * @param key (char)
+		  * @return (void)
+		  */
+		virtual void InputKeyReleased(char key) noexcept override;
 
 		/** @brief Returns view matrix for rendering
 		  * @return (const DirectX::XMMATRIX&)
@@ -40,15 +57,22 @@ namespace WoodenEngine
 		float WindowWidth;
 		float WindowHeight;
 
-		float XAngle = XM_PIDIV4;
-		
-		float YAngle = 2.55f;
-		
-		float ViewRadius = 25.0f;
+		XMFLOAT3 Up = { 0.0f, 1.0f, 0.0f };
+		XMFLOAT3 Right = { 1.0f, 0.0f, 0.0f };
+		XMFLOAT3 Forward = { 0.0f, 0.0f, 1.0f };
 
 		// View matrix for rendering
-		XMMATRIX ViewMatrix;
-		
+		XMMATRIX View;
+
+		bool bMoveForward;
+		bool bMoveBack;
+		bool bMoveRight;
+		bool bMoveLeft;
+
+		float LookUpAngle = 0;
+		float LookRightAngle = 0;
+
+
 		/** @brief Recompute view matrix based on XAngle, ZAngle, ViewRadius for rendering
 		  * @return (void)
 		  */

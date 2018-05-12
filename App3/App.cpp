@@ -85,6 +85,12 @@ void App::SetWindow(CoreWindow^ window)
 
 	CoreWindow::GetForCurrentThread()->PointerReleased +=
 		ref new TypedEventHandler<Windows::UI::Core::CoreWindow^, Windows::UI::Core::PointerEventArgs^>(this, &App::OnPointerReleased);
+
+	CoreWindow::GetForCurrentThread()->KeyDown +=
+		ref new TypedEventHandler<Windows::UI::Core::CoreWindow^, Windows::UI::Core::KeyEventArgs^>(this, &App::OnKeyPressed);
+
+	CoreWindow::GetForCurrentThread()->KeyUp +=
+		ref new TypedEventHandler<Windows::UI::Core::CoreWindow^, Windows::UI::Core::KeyEventArgs^>(this, &App::OnKeyReleased);
 }
 
 // Initializes scene resources, or loads a previously saved app state.
@@ -215,7 +221,54 @@ void WoodenEngine::App::OnMouseMoved(Windows::Devices::Input::MouseDevice ^ mous
 	const auto dx = static_cast<float>(args->MouseDelta.X);
 	const auto dy = static_cast<float>(args->MouseDelta.Y);
 
-	m_main->MouseMoved(dx, dy);
+	m_main->InputMouseMoved(dx, dy);
+}
+
+void WoodenEngine::App::OnKeyPressed(Windows::UI::Core::CoreWindow^ coreWindow, Windows::UI::Core::KeyEventArgs^ args)
+{
+	char key;
+	switch(args->VirtualKey)
+	{
+	case Windows::System::VirtualKey::W:
+		key = 'w';
+		break;
+	case Windows::System::VirtualKey::D:
+		key = 'd';
+		break;
+	case Windows::System::VirtualKey::A:
+		key = 'a';
+		break;
+	case Windows::System::VirtualKey::S:
+		key = 's';
+		break;
+	default:
+		return;
+	}
+	m_main->InputKeyPressed(key);
+}
+
+void WoodenEngine::App::OnKeyReleased(Windows::UI::Core::CoreWindow^ coreWindow, Windows::UI::Core::KeyEventArgs^ args)
+{
+
+	char key;
+	switch (args->VirtualKey)
+	{
+	case Windows::System::VirtualKey::W:
+		key = 'w';
+		break;
+	case Windows::System::VirtualKey::D:
+		key = 'd';
+		break;
+	case Windows::System::VirtualKey::A:
+		key = 'a';
+		break;
+	case Windows::System::VirtualKey::S:
+		key = 's';
+		break;
+	default:
+		return;
+	}
+	m_main->InputKeyReleased(key);
 }
 
 void WoodenEngine::App::OnPointerPressed(Windows::UI::Core::CoreWindow ^ coreWindow, Windows::UI::Core::PointerEventArgs ^ pointerEventArgs)

@@ -250,6 +250,48 @@ namespace WoodenEngine
 		return MeshData;
 	}
 
+	std::unique_ptr<WoodenEngine::FMeshData> FMeshGenerator::CreateLandscapeGrid(
+		float Width,
+		float Height, 
+		uint32 NumVSubdivisions, 
+		uint32 NumHSubdivisions) const noexcept
+	{
+		auto GridData = CreateGrid(Width, Height, NumVSubdivisions, NumHSubdivisions);
+
+		/* Change Y coordinate of grid's vertices, based on the formula:
+		 * y = 0.5*(sin(0.2x)x + cos(0.2z)z)
+		 * By finding partial derivatives, we can find normal vector:
+		 * diff(y, x) = 3*cos(x)
+		 * diff(y, z) = -3*sin(x)
+		 * TangentX = [1 3*cos(x) 0]
+		 * TangentZ = [0 -3*sin(z) 1]
+		 * Normal = Cross(TangentZ, TangentX)
+		 * Normal = [-3cosx 1 3sinz]
+		 */
+
+		
+		for (auto& Vertex : GridData->Vertices)
+		{
+			float z = Vertex.Position.z;
+			float x = Vertex.Position.x;
+
+			Vertex.Position.y = 0.5*(sinf(x*0.2)*x + cosf(z*0.2)*z);
+			
+			Vertex.Tangent.x = 1;
+			Vertex.Tangent.y = 
+				cosf(z / 5) / 2.0f + sinf(x / 5) / 2.0f + x * cosf(x / 5) / 10.0f - z * sinf(z / 5) / 10;
+			Vertex.Tangent.z = 1;
+			XMStoreFloat3(&Vertex.Tangent, XMVector3Normalize(XMLoadFloat3(&Vertex.Tangent)));
+
+			Vertex.Normal.x = -sinf(x / 5) / 2 - x * cosf(x / 5) / 10;
+			Vertex.Normal.y = 1;
+			Vertex.Normal.z = z * sinf(z / 5) / 10 - cosf(z / 5) / 2;
+			XMStoreFloat3(&Vertex.Normal, XMVector3Normalize(XMLoadFloat3(&Vertex.Normal)));
+		}
+
+		return GridData;
+	}
+
 	void FMeshGenerator::Subdivide(FMeshData* MeshData) const noexcept
 	{
 		const auto CopiedMeshData = *MeshData;

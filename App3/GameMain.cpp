@@ -1,4 +1,3 @@
-
 #include "pch.h"
 #include <array>
 
@@ -26,7 +25,7 @@ namespace WoodenEngine
 	}
 
 	bool FGameMain::Initialize(Windows::UI::Core::CoreWindow^ outWindow)
-	{
+	{		
 		Window = outWindow;
 
 		InitDevice();
@@ -48,8 +47,8 @@ namespace WoodenEngine
 		InitShaders();
 		BuildPipelineStateObject();
 
-		DX::ThrowIfFailed(CmdList->Close());
-		ID3D12CommandList* cmdLists[] = { CmdList.Get() };
+		DX::ThrowIfFailed(CMDList->Close());
+		ID3D12CommandList* cmdLists[] = { CMDList.Get() };
 		CmdQueue->ExecuteCommandLists(_countof(cmdLists), cmdLists);
 
 		SignalAndWaitForGPU();
@@ -157,16 +156,6 @@ namespace WoodenEngine
 		}
 	}
 
-	void FGameMain::AddTextures()
-	{
-		auto BasePath = static_cast<std::wstring>(L"Assets\\Textures\\");
-
-		GameResources->LoadTexture(BasePath + L"WoodCrate01.dds", "crate", CmdList);
-		GameResources->LoadTexture(BasePath + L"water1.dds", "water", CmdList);
-		GameResources->LoadTexture(BasePath + L"grass.dds", "grass", CmdList);
-	}
-
-
 	void FGameMain::InitTexturesViews()
 	{
 		CD3DX12_CPU_DESCRIPTOR_HANDLE SRVDescriptorHandle(
@@ -238,6 +227,17 @@ namespace WoodenEngine
 		AddObjects();
 	}
 
+	void FGameMain::AddTextures()
+	{
+		auto BasePath = static_cast<std::wstring>(L"Assets\\Textures\\");
+
+		GameResources->LoadTexture(BasePath + L"WireFence.dds", "wirefence", CMDList);
+		GameResources->LoadTexture(BasePath + L"WoodCrate01.dds", "crate", CMDList);
+		GameResources->LoadTexture(BasePath + L"water1.dds", "water", CMDList);
+		GameResources->LoadTexture(BasePath + L"grass.dds", "grass", CMDList);
+	}
+
+
 	void FGameMain::AddMaterials()
 	{
 		uint64 iConstBuffer = 0;
@@ -254,6 +254,7 @@ namespace WoodenEngine
 		WaterMaterial->iConstBuffer = iConstBuffer;
 		WaterMaterial->FresnelR0 = { 0.1f, 0.1f, 0.1f };
 		WaterMaterial->Roughness = 0.0f;
+		WaterMaterial->DiffuseAlbedo = { 1.0f, 1.0f, 1.0f, 0.4f };
 		WaterMaterial->DiffuseTexture = GameResources->GetTextureData("water");
 		GameResources->AddMaterial(std::move(WaterMaterial));
 		++iConstBuffer;
@@ -273,6 +274,15 @@ namespace WoodenEngine
 		CrateMaterial->DiffuseTexture = GameResources->GetTextureData("crate");
 		GameResources->AddMaterial(std::move(CrateMaterial));
 		++iConstBuffer;
+
+		auto WireFenceMaterial = std::make_unique<FMaterialData>("wirefence");
+		WireFenceMaterial->iConstBuffer = iConstBuffer;
+		WireFenceMaterial->FresnelR0 = { 0.05f, 0.05f, 0.05f };
+		WireFenceMaterial->Roughness = 0.85f;
+		WireFenceMaterial->DiffuseTexture = GameResources->GetTextureData("wirefence");
+		GameResources->AddMaterial(std::move(WireFenceMaterial));
+		++iConstBuffer;
+
 	}
 
 	void FGameMain::AddObjects()
@@ -282,8 +292,11 @@ namespace WoodenEngine
 		
 		auto BoxMesh = MeshGenerator->CreateBox(1.0f, 1.0f, 1.0f);
 		
-		auto PlaneMesh = MeshGenerator->CreateGrid(15.0f, 15.0f, 40, 40);
-		auto SphereMesh = MeshGenerator->CreateSphere(1.0f, 20.0f, 20.0f);
+		auto LandscapeMesh = MeshGenerator->CreateLandscapeGrid(40.0f, 40.0f, 80, 80);
+		LandscapeMesh->Name = "Landscape";
+
+		auto PlaneMesh = MeshGenerator->CreateGrid(23.0f, 23.0f, 30, 30);
+		auto SphereMesh = MeshGenerator->CreateSphere(1.0f, 15.0f, 15.0f);
 
 		auto MeshParser = std::make_unique<FMeshParser>();
 		auto SkullMesh = MeshParser->ParseTxtData("Assets\\Models\\skull.txt");
@@ -293,51 +306,82 @@ namespace WoodenEngine
 		const auto SphereMeshName = SphereMesh->Name;
 		const auto SkullMeshName = SkullMesh->Name;
 		const auto PlaneMeshName = PlaneMesh->Name;
+		const auto LandscapeMeshName = LandscapeMesh->Name;
 
 		std::vector<std::unique_ptr<FMeshData>> Meshes;
-		Meshes.resize(4);
+		Meshes.resize(5);
 		Meshes[0] = std::move(BoxMesh);
 		Meshes[1] = std::move(SphereMesh);
 		Meshes[2] = std::move(SkullMesh);
 		Meshes[3] = std::move(PlaneMesh);
+		Meshes[4] = std::move(LandscapeMesh);
 
-		GameResources->LoadMeshes(std::move(Meshes), CmdList);
+		GameResources->LoadMeshes(std::move(Meshes), CMDList);
 
+		uint8 iConstBuffer = 0;
 
-		auto* WaterObject = new WObject(PlaneMeshName);
+		auto LandscapeObject = std::make_unique<WObject>(LandscapeMeshName);
+		XMFLOAT4X4 LandscapeTextureTransform;
+		XMStoreFloat4x4(&LandscapeTextureTransform, XMMatrixScaling(6.0f, 6.0f, 1.0f));
+		LandscapeObject->SetTextureTransform(std::move(LandscapeTextureTransform));
+		LandscapeObject->SetPosition(0, -2, 0);
+		LandscapeObject->SetConstBufferIndex(iConstBuffer);
+		LandscapeObject->SetWaterFactor(0);
+		LandscapeObject->SetMaterial(GameResources->GetMaterialData("grass"));
+		++iConstBuffer;
 
+		RenderableObjects[(uint8)ERenderLayer::Opaque].push_back(LandscapeObject.get());
+		Objects.push_back(std::move(LandscapeObject));
+
+		auto WaterObject = std::make_unique<WObject>(PlaneMeshName);
 		XMFLOAT4X4 TextureTransform;
 		XMStoreFloat4x4(&TextureTransform, XMMatrixScaling(5.0f, 5.0f, 1.0f));
 		WaterObject->SetTextureTransform(std::move(TextureTransform));
 		WaterObject->SetPosition(0, 0, 0);
-		WaterObject->SetConstBufferIndex(0);
+		WaterObject->SetConstBufferIndex(iConstBuffer);
 		WaterObject->SetMaterial(GameResources->GetMaterialData("water"));
-		Objects.push_back(WaterObject);
+		++iConstBuffer;
+
+		RenderableObjects[(uint8)ERenderLayer::Transparent].push_back(WaterObject.get());
+		Objects.push_back(std::move(WaterObject));
 
 		// Create objects
-		auto* BoxObject = new WObject(BoxMeshName);
-		BoxObject->SetConstBufferIndex(1);
-		BoxObject->SetPosition(-5.0f, 0.2f, 0.0f);
-		BoxObject->SetMaterial(GameResources->GetMaterialData("crate"));
-		Objects.push_back(BoxObject);
+		auto BoxObject = std::make_unique<WObject>(BoxMeshName);
+		BoxObject->SetConstBufferIndex(iConstBuffer);
+		BoxObject->SetPosition(1.5f, 0.2f, 0.0f);
+		BoxObject->SetWaterFactor(1.0);
+		BoxObject->SetMaterial(GameResources->GetMaterialData("wirefence"));
+		++iConstBuffer;
 
-		auto* SphereObject = new WObject(SphereMeshName);
-		SphereObject->SetConstBufferIndex(2);
-		SphereObject->SetPosition(2.5f, 0.2f, 2.0f);
+		RenderableObjects[(uint8)ERenderLayer::AlphaTested].push_back(BoxObject.get());
+		Objects.push_back(std::move(BoxObject));
+
+		auto SphereObject = std::make_unique<WObject>(SphereMeshName);
+		SphereObject->SetConstBufferIndex(iConstBuffer);
+		SphereObject->SetPosition(-2.5f, -0.2f, 2.0f);
 		SphereObject->SetWaterFactor(-1.0);
 		SphereObject->SetMaterial(GameResources->GetMaterialData("crate"));
-		Objects.push_back(SphereObject);
+		++iConstBuffer;
+
+		RenderableObjects[(uint8)ERenderLayer::Opaque].push_back(SphereObject.get());
+		Objects.push_back(std::move(SphereObject));
 	
-		auto* SkullObject = new WObject(SkullMeshName);
-		SkullObject->SetConstBufferIndex(3);
+		auto SkullObject = std::make_unique<WObject>(SkullMeshName);
+		SkullObject->SetConstBufferIndex(iConstBuffer);
 		SkullObject->SetPosition({ -1.5f, -0.5f, 0.0f });
 		SkullObject->SetScale(0.5f, 0.5f, 0.5f);
 		SkullObject->SetWaterFactor(-1.0);
 		SkullObject->SetMaterial(GameResources->GetMaterialData("skull"));
-		Objects.push_back(SkullObject);
+		SkullObject->SetIsVisible(false);
+		++iConstBuffer;
 
-		Camera = new WCamera(Window->Bounds.Width, Window->Bounds.Height);
-		Objects.push_back(Camera);
+		RenderableObjects[(uint8)ERenderLayer::Opaque].push_back(SkullObject.get());
+		Objects.push_back(std::move(SkullObject));
+
+		auto CameraObject = std::make_unique<WCamera>(Window->Bounds.Width, Window->Bounds.Height);
+		Camera = CameraObject.get();
+
+		Objects.push_back(std::move(CameraObject));
 	}
 
 	void FGameMain::InitDescriptorHeap()
@@ -388,7 +432,7 @@ namespace WoodenEngine
 
 		DX::ThrowIfFailed(Device->CreateCommandList(
 			0, D3D12_COMMAND_LIST_TYPE_DIRECT, CmdAllocatorDefault.Get(),
-			nullptr, IID_PPV_ARGS(&CmdList)));
+			nullptr, IID_PPV_ARGS(&CMDList)));
 	}
 
 	void WoodenEngine::FGameMain::InitSwapChain()
@@ -437,8 +481,22 @@ namespace WoodenEngine
 
 	void FGameMain::InitShaders()
 	{
-		Shaders["standartVS"] = DX::CompileShader(L"Shaders\\color.hlsl", nullptr, "VS", "vs_5_0");
-		Shaders["opaquePS"] = DX::CompileShader(L"Shaders\\color.hlsl", nullptr, "PS", "ps_5_0");
+		const D3D_SHADER_MACRO OpaqueShaderDefines[] =
+		{
+			"FOG", "1",
+			NULL, NULL
+		};
+
+		const D3D_SHADER_MACRO AlphaTestShaderDefines[] =
+		{
+			"FOG", "1",
+			"ALPHA_TEST", "1",
+			NULL, NULL
+		};
+
+		Shaders["standartVS"] = DX::CompileShader(L"Shaders\\Shader.hlsl", nullptr, "VS", "vs_5_0");
+		Shaders["opaquePS"] = DX::CompileShader(L"Shaders\\Shader.hlsl", OpaqueShaderDefines, "PS", "ps_5_0");
+		Shaders["alphatestPS"] = DX::CompileShader(L"Shaders\\Shader.hlsl", AlphaTestShaderDefines, "PS", "ps_5_0");
 	}
 
 	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> FGameMain::GetStaticSamplers() const
@@ -563,32 +621,74 @@ namespace WoodenEngine
 		InputLayout.pInputElementDescs = inputElements;
 		InputLayout.NumElements = 3;
 
-		D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC OpaquePSODesc = {};
+		OpaquePSODesc.pRootSignature = RootSignature.Get();
+		OpaquePSODesc.VS = { Shaders["standartVS"]->GetBufferPointer(), Shaders["standartVS"]->GetBufferSize() };
+		OpaquePSODesc.PS = { Shaders["opaquePS"]->GetBufferPointer(), Shaders["opaquePS"]->GetBufferSize() };
+		OpaquePSODesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+		OpaquePSODesc.SampleMask = UINT_MAX;
+		OpaquePSODesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+		OpaquePSODesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+		OpaquePSODesc.NumRenderTargets = 1;
+		OpaquePSODesc.RTVFormats[0] = BufferFormat;
+		OpaquePSODesc.DSVFormat = DepthStencilFormat;
+		OpaquePSODesc.SampleDesc.Count = 1;
+		OpaquePSODesc.SampleDesc.Quality = 0;
+		OpaquePSODesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+		OpaquePSODesc.InputLayout = InputLayout;
 
-		psoDesc.InputLayout = InputLayout;
+		DX::ThrowIfFailed(Device->CreateGraphicsPipelineState(
+			&OpaquePSODesc,
+			IID_PPV_ARGS(&PipelineStates["opaque"])));
+		
+		// Create pipeline state object with based on alpha bledning for transparent objects
 
-		psoDesc.pRootSignature = RootSignature.Get();
-		psoDesc.VS = { Shaders["standartVS"]->GetBufferPointer(), Shaders["standartVS"]->GetBufferSize() };
-		psoDesc.PS = { Shaders["opaquePS"]->GetBufferPointer(), Shaders["opaquePS"]->GetBufferSize() };
-		psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-		psoDesc.SampleMask = UINT_MAX;
-		psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-		psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
-		psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
-		psoDesc.NumRenderTargets = 1;
-		psoDesc.RTVFormats[0] = BufferFormat;
-		psoDesc.DSVFormat = DepthStencilFormat;
-		psoDesc.SampleDesc.Count = 1;
-		psoDesc.SampleDesc.Quality = 0;
-		psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+		D3D12_RENDER_TARGET_BLEND_DESC BlendDesc;
+		BlendDesc.BlendEnable = true;
+		
+		// Cd = As*Cs + (1-As)*Cd
+		BlendDesc.BlendOp = D3D12_BLEND_OP_ADD;
+		BlendDesc.SrcBlend = D3D12_BLEND_SRC_ALPHA;
+		BlendDesc.DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
 
-		DX::ThrowIfFailed(Device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&PSO)));
+		// Ad = As
+		BlendDesc.BlendOpAlpha = D3D12_BLEND_OP_ADD;
+		BlendDesc.SrcBlendAlpha = D3D12_BLEND_ONE;
+		BlendDesc.DestBlendAlpha = D3D12_BLEND_ZERO;
+		
+		// Distable logic operators because of enabled blendop
+		BlendDesc.LogicOpEnable = false;
+		BlendDesc.LogicOp = D3D12_LOGIC_OP_NOOP;
+		BlendDesc.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC TransparentPSODesc = OpaquePSODesc;
+		TransparentPSODesc.BlendState.RenderTarget[0] = BlendDesc;
+		
+
+		DX::ThrowIfFailed(Device->CreateGraphicsPipelineState(
+			&TransparentPSODesc,
+			IID_PPV_ARGS(&PipelineStates["transparent"])));
+
+		// Create pipeline state object with alpha test. for semi-transparent objects
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC AlfaTestPSODesc = OpaquePSODesc;
+		AlfaTestPSODesc.PS = {
+			Shaders["alphatestPS"]->GetBufferPointer(),
+			Shaders["alphatestPS"]->GetBufferSize() 
+		};
+		AlfaTestPSODesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+
+		DX::ThrowIfFailed(Device->CreateGraphicsPipelineState(
+			&AlfaTestPSODesc,
+			IID_PPV_ARGS(&PipelineStates["alphatest"])));
 	}
 
 	void WoodenEngine::FGameMain::Update(float dtime)
 	{
-		for (auto Object : Objects)
+		AnimateWaterMaterial();
+
+		for(auto iObject=0; iObject < Objects.size(); ++iObject)
 		{
+			auto Object = Objects[iObject].get();
 			if (Object->IsUpdating())
 			{
 				Object->Update(dtime);
@@ -609,12 +709,42 @@ namespace WoodenEngine
 		UpdateFrameConstBuffer();
 	}
 
+	void FGameMain::AnimateWaterMaterial()
+	{
+		auto WaterMaterial = GameResources->GetMaterialData("water");
+
+		auto& TexU = WaterMaterial->Transform(3, 0);
+		auto& TexV = WaterMaterial->Transform(3, 1);
+
+
+		auto Displacement = 0.03f*(0.5f*sin(GameTime / 15.0f) + 0.5f);
+
+		TexU += Displacement;
+		TexV += Displacement;
+
+		// Clamp to [0, 1]
+		if (TexU >= 1.0f)
+		{
+			TexU -= 1.0f;
+		}
+
+		if (TexV >= 1.0f)
+		{
+			TexV -= 1.0f;
+		}
+
+		WaterMaterial->Transform(3, 0) = TexU;
+		WaterMaterial->Transform(3, 1) = TexV;
+
+		WaterMaterial->NumDirtyConstBuffers = NMR_SWAP_BUFFERS;
+	}
 
 	void WoodenEngine::FGameMain::UpdateObjectsConstBuffer()
 	{
 		auto ObjectsBuffer = CurrFrameResource->ObjectsDataBuffer.get();
-		for (auto Object : Objects)
+		for(auto iObject=0; iObject < Objects.size(); ++iObject)
 		{
+			auto Object = Objects[iObject].get();
 			if (Object->IsRenderable() && Object->GetNumDirtyConstBuffers() > 0)
 			{
 				SObjectData ObjectShaderData;
@@ -622,8 +752,9 @@ namespace WoodenEngine
 				auto WorldMatrix = Object->GetWorldMatrix();
 				XMStoreFloat4x4(&ObjectShaderData.WorldMatrix, XMMatrixTranspose(WorldMatrix));
 				
-				auto MaterialTransform = Object->GetTextureTransform();
-				XMStoreFloat4x4(&ObjectShaderData.MaterialTransform, XMLoadFloat4x4(&MaterialTransform));
+				auto TextureTransform = Object->GetTextureTransform();
+				XMStoreFloat4x4(&ObjectShaderData.MaterialTransform, 
+					XMMatrixTranspose(XMLoadFloat4x4(&TextureTransform)));
 
 				ObjectShaderData.Time = Object->GetLifeTime();
 				
@@ -652,7 +783,8 @@ namespace WoodenEngine
 				MaterialShaderData.DiffuzeAlbedo = MaterialData->DiffuseAlbedo;
 				MaterialShaderData.FresnelR0 = MaterialData->FresnelR0;
 				MaterialShaderData.Roughness = MaterialData->Roughness;
-				MaterialShaderData.MaterialTransform = MaterialData->Transform;
+				XMStoreFloat4x4(&MaterialShaderData.MaterialTransform, 
+					XMMatrixTranspose(XMLoadFloat4x4(&MaterialData->Transform)));
 
 				MaterialsBuffer->CopyData(MaterialData->iConstBuffer, MaterialShaderData);
 
@@ -663,7 +795,7 @@ namespace WoodenEngine
 
 	void WoodenEngine::FGameMain::UpdateFrameConstBuffer()
 	{
-		SFrameData ConstFrameData = {};
+		ConstFrameData = {};
 
 		const auto& ViewMatrix = Camera->GetViewMatrix();
 
@@ -676,7 +808,6 @@ namespace WoodenEngine
 		XMStoreFloat4x4(&ConstFrameData.ViewProjMatrix, XMMatrixTranspose(ViewProj));
 
 		ConstFrameData.CameraPosition = Camera->GetWorldPosition();
-		ConstFrameData.AmbientLight = { 0.35f, 0.35f, 0.35f, 1.0f};
 		ConstFrameData.GameTime = GameTime;
 
 		ConstFrameData.Lights[0].Direction = { 0.57735f, -0.57735f, 0.57735f };
@@ -695,15 +826,40 @@ namespace WoodenEngine
 		ConstFrameData.Lights[3].FalloffEnd = 500;
 
 		CurrFrameResource->FrameDataBuffer->CopyData(0, ConstFrameData);
-}
+	}
 
-	void WoodenEngine::FGameMain::MouseMoved(const float dx, const float dy) noexcept
+	void WoodenEngine::FGameMain::InputMouseMoved(const float dx, const float dy) noexcept
 	{
-		for (auto Object : Objects)
+		for (auto iObject = 0; iObject < Objects.size(); ++iObject)
 		{
+			auto Object = Objects[iObject].get();
 			if (Object->IsEnabledInputEvents())
 			{
 				Object->InputMouseMoved(dx, dy);
+			}
+		}
+	}
+
+	void FGameMain::InputKeyPressed(char key)
+	{
+		for(auto iObject =0; iObject < Objects.size(); ++iObject)
+		{
+			auto Object = Objects[iObject].get();
+			if (Object->IsEnabledInputEvents())
+			{
+				Object->InputKeyPressed(key);
+			}
+		}
+	}
+
+	void FGameMain::InputKeyReleased(char key)
+	{
+		for (auto iObject = 0; iObject < Objects.size(); ++iObject)
+		{
+			auto Object = Objects[iObject].get();
+			if (Object->IsEnabledInputEvents())
+			{
+				Object->InputKeyReleased(key);
 			}
 		}
 	}
@@ -714,73 +870,49 @@ namespace WoodenEngine
 
 		DX::ThrowIfFailed(CmdListAllocator->Reset());
 
-		DX::ThrowIfFailed(CmdList->Reset(CmdListAllocator.Get(), PSO.Get()));
+		DX::ThrowIfFailed(CMDList->Reset(CmdListAllocator.Get(), PipelineStates["opaque"].Get()));
 
-		CmdList->ResourceBarrier(
+		CMDList->ResourceBarrier(
 			1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET)
 		);
 
-		CmdList->SetGraphicsRootSignature(RootSignature.Get());
+		CMDList->SetGraphicsRootSignature(RootSignature.Get());
 
 		ID3D12DescriptorHeap* srvDescriptorHeaps[] = {  SRVDescriptorHeap.Get()};
-		CmdList->SetDescriptorHeaps(_countof(srvDescriptorHeaps), srvDescriptorHeaps);
+		CMDList->SetDescriptorHeaps(_countof(srvDescriptorHeaps), srvDescriptorHeaps);
 
 		// Set frame const buffer as argument to shader
 		auto FrameDataResAddress = CurrFrameResource->FrameDataBuffer->Resource()->GetGPUVirtualAddress();
-		CmdList->SetGraphicsRootConstantBufferView(2, FrameDataResAddress);
+		CMDList->SetGraphicsRootConstantBufferView(2, FrameDataResAddress);
 
-		CmdList->RSSetViewports(1, &ScreenViewport);
-		CmdList->RSSetScissorRects(1, &ScissorRect);
+		CMDList->RSSetViewports(1, &ScreenViewport);
+		CMDList->RSSetScissorRects(1, &ScissorRect);
 
-		CmdList->ClearRenderTargetView(CurrentBackBufferView(), Colors::White, 0, nullptr);
-		CmdList->ClearDepthStencilView(DSVDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+		CMDList->ClearRenderTargetView(CurrentBackBufferView(), (float*)&ConstFrameData.FogColor, 0, nullptr);
+		CMDList->ClearDepthStencilView(DSVDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 
-		CmdList->OMSetRenderTargets(1, &CurrentBackBufferView(), true, &DSVDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
+		CMDList->OMSetRenderTargets(1, &CurrentBackBufferView(), true, &DSVDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
 
-		CmdList->IASetVertexBuffers(0, 1, &GameResources->GetVertexBufferView());
-		CmdList->IASetIndexBuffer(&GameResources->GetIndexBufferView());
-		CmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		CMDList->IASetVertexBuffers(0, 1, &GameResources->GetVertexBufferView());
+		CMDList->IASetIndexBuffer(&GameResources->GetIndexBufferView());
+		CMDList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-		auto* CurMaterialsResource = CurrFrameResource->MaterialsDataBuffer.get();
-		for (auto Object : Objects)
-		{
-			if (!Object->IsRenderable())
-			{
-				continue;
-			}
+		
+		RenderObjects(RenderableObjects[(uint8)ERenderLayer::Opaque], CMDList);
 
-			const auto& MeshName = Object->GetMeshName();
-			const auto MeshData = GameResources->GetMeshData(MeshName);
-
-			auto ObjectDataResAddress =
-				CurrFrameResource->ObjectsDataBuffer->Resource()->GetGPUVirtualAddress() +
-				Object->GetConstBufferIndex()*CurrFrameResource->ObjectsDataBuffer->GetElementByteSize();
-
-			CmdList->SetGraphicsRootConstantBufferView(0, ObjectDataResAddress);
-
-			auto MaterialsResAddress =
-				CurMaterialsResource->Resource()->GetGPUVirtualAddress() +
-				Object->GetMaterial()->iConstBuffer*CurMaterialsResource->GetElementByteSize();
-			CmdList->SetGraphicsRootConstantBufferView(1, MaterialsResAddress);
-
-			auto DiffuseTexSRVHandle = CD3DX12_GPU_DESCRIPTOR_HANDLE{
-				SRVDescriptorHeap->GetGPUDescriptorHandleForHeapStart()
-			};
-			DiffuseTexSRVHandle.Offset(Object->GetMaterial()->DiffuseTexture->iSRVHeap, CBVSRVDescriptorHandleIncrementSize);
-			CmdList->SetGraphicsRootDescriptorTable(3, DiffuseTexSRVHandle);
+		CMDList->SetPipelineState(PipelineStates["alphatest"].Get());
+		RenderObjects(RenderableObjects[(uint8)ERenderLayer::AlphaTested], CMDList);
+		
+		CMDList->SetPipelineState(PipelineStates["transparent"].Get());
+		RenderObjects(RenderableObjects[(uint8)ERenderLayer::Transparent], CMDList);
 
 
-			CmdList->DrawIndexedInstanced(
-				MeshData.Indices.size(), 1, MeshData
-				.IndexBegin, MeshData.VertexBegin, 0);
-		}
-
-		CmdList->ResourceBarrier(
+		CMDList->ResourceBarrier(
 			1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT)
 		);
 
-		DX::ThrowIfFailed(CmdList->Close());
-		ID3D12CommandList* cmdLists[] = { CmdList.Get() };
+		DX::ThrowIfFailed(CMDList->Close());
+		ID3D12CommandList* cmdLists[] = { CMDList.Get() };
 		CmdQueue->ExecuteCommandLists(_countof(cmdLists), cmdLists);
 
 		DX::ThrowIfFailed(SwapChain->Present(1, 0));
@@ -792,6 +924,49 @@ namespace WoodenEngine
 		CmdQueue->Signal(Fence.Get(), FenceValue);
 	}
 
+	void FGameMain::RenderObjects(
+		const std::vector<WObject*>& RenderableObjects, 
+		ComPtr<ID3D12GraphicsCommandList> CMDList)
+	{
+		auto* CurMaterialsResource = CurrFrameResource->MaterialsDataBuffer.get();
+
+		const auto MaterialConstBufferSize = CurMaterialsResource->GetElementByteSize();
+		const auto ObjectConstBufferSize = CurrFrameResource->ObjectsDataBuffer->GetElementByteSize();
+
+		for (auto Object : RenderableObjects)
+		{
+			if (!Object->IsVisible())
+			{
+				continue;
+			}
+
+			auto ObjectDataResAddress =
+				CurrFrameResource->ObjectsDataBuffer->Resource()->GetGPUVirtualAddress() +
+				Object->GetConstBufferIndex()*ObjectConstBufferSize;
+
+			auto MaterialsResAddress =
+				CurMaterialsResource->Resource()->GetGPUVirtualAddress() +
+				Object->GetMaterial()->iConstBuffer*MaterialConstBufferSize;
+
+			auto DiffuseTexSRVHandle = CD3DX12_GPU_DESCRIPTOR_HANDLE{
+				SRVDescriptorHeap->GetGPUDescriptorHandleForHeapStart()
+			};
+			DiffuseTexSRVHandle.Offset(Object->GetMaterial()->DiffuseTexture->iSRVHeap, 
+				CBVSRVDescriptorHandleIncrementSize);
+
+
+			CMDList->SetGraphicsRootConstantBufferView(0, ObjectDataResAddress);
+			CMDList->SetGraphicsRootConstantBufferView(1, MaterialsResAddress);
+			CMDList->SetGraphicsRootDescriptorTable(3, DiffuseTexSRVHandle);
+
+			auto MeshName = Object->GetMeshName();
+			auto MeshData = GameResources->GetMeshData(std::move(MeshName));
+
+			CMDList->DrawIndexedInstanced(
+				MeshData.Indices.size(), 1, MeshData
+				.IndexBegin, MeshData.VertexBegin, 0);
+		}
+	}
 
 	void FGameMain::SignalAndWaitForGPU()
 	{
