@@ -5,6 +5,7 @@
 //***************************************************************************************
 
 // Number of direction lights
+
 #ifndef NUM_DIR_LIGHTS
 #define NUM_DIR_LIGHTS 3
 #endif
@@ -33,20 +34,21 @@ cbuffer cbObject: register(b0)
 	float cbTime;
 
     int cbIsWater;
+
+    int cbWaterFactor;
 }
 
 cbuffer cbMaterial: register(b1)
 
-{
-    float4x4 cbMatTransform;
-
-	
+{	
 	// Diffuse reflection factor
 	float4 cbDiffuseAlbedo;
 
 	float3 cbFresnelR0;
 	
 	float cbRoughness;
+
+    float4x4 cbMatTransform;
 }
 
 Texture2D tDiffuseMap : register(t0);
@@ -68,17 +70,27 @@ cbuffer cbFrame: register(b2)
 	
 	// View proj matrix
 	float4x4 cbViewProj;
-	
+
+	// Lights in the frame
+	Light cbLights[MaxLights];
+
 	// World camera position
 	float3 cbCameraPosW;
-	
+
 	// Game time
 	float cbGameTime;
 
 	// Game's ambient light 
 	float4 cbAmbientLight;
 
-	Light cbLights[MaxLights];
+	// Fog color
+	float4 cbFogColor;
+
+	// Distance from camera to fog start
+	float cbFogStart;
+
+	// Distance from fog start to fog end
+	float cbFogRange;
 };
 
 struct VertexIn
@@ -116,38 +128,47 @@ VertexOut VS(VertexIn vin)
 	
     if (cbIsWater > 0)
     {
-        float sint = sin(cbTime / 10.0f);
-		vin.PosL.y = sin(vin.PosL.x + vin.PosL.z) * sint;
+        float sint = sin(cbTime / 15.0f);
+		vin.PosL.y = sin(vin.PosL.x + vin.PosL.z) * sint*0.5f;
         vin.NormalL = float3(-sint * cos(vin.PosL.x), 1, -sint * cos(vin.PosL.z));
         vin.NormalL = normalize(vin.NormalL);
     }
+    else
+    {
+        float sint = sin(cbTime / 15.0f);
+        vin.PosL.y += cbWaterFactor * sint*0.5f;
+    }
 
 	// Compute world position
-    float4 posW = mul(float4(vin.PosL, 1.0f), cbWorld);
-    vout.PosW = posW.xyz;
+        float4 posW = mul(float4(vin.PosL, 1.0f), cbWorld);
+        vout.PosW = posW.xyz;
 
 	// Compute world normal
-    vout.NormalW = mul(vin.NormalL, (float3x3) cbWorld);
+        vout.NormalW = mul(vin.NormalL, (float3x3) cbWorld);
 
 	// Compute projected position
-    vout.PosP = mul(posW, cbViewProj);
+        vout.PosP = mul(posW, cbViewProj);
 	
     // Apply texture tranformation for creating some effects
     // TexC - 2D coordinates, converts them to homogolenous space (z = 0 and w = 1.0f)
-	vout.TexC = mul(mul(float4(vin.TexC, 0.0f, 1.0f), cbTexTransform), cbMatTransform).xy;
+        vout.TexC = mul(mul(float4(vin.TexC, 0.0f, 1.0f), cbTexTransform), cbMatTransform).xy;
     
-	return vout;
-}
+        return vout;
+    }
 
 float4 PS(VertexOut pin) : SV_Target
 {
     float4 diffuseAlbedo = tDiffuseMap.Sample(sAnisotropicWrap, pin.TexC) * cbDiffuseAlbedo;
 
+#ifdef ALPHA_TEST
+	clip(diffuseAlbedo.a - 0.1f);
+#endif 
+
 	// Normalize normal because of possible uniform world transform
 	pin.NormalW = normalize(pin.NormalW);
 	
 	// Vector from point to eye
-	float3 toEyeW = normalize(cbCameraPosW - pin.PosW);
+	float3 toCameraW = normalize(cbCameraPosW - pin.PosW);
 
 	// Ambient light
     float4 ambient = cbAmbientLight * diffuseAlbedo;
@@ -159,10 +180,19 @@ float4 PS(VertexOut pin) : SV_Target
 	float3 shadowFactor = 1.0f;
 	// Compute diffuse and specular light
 	float4 directLight = ComputeLighting(cbLights, mat,
-		pin.PosW, pin.NormalW, toEyeW, shadowFactor, cbGameTime);
+		pin.PosW, pin.NormalW, toCameraW, shadowFactor, cbGameTime);
+
+
 
 	// Final color = ambient + directLight (diffuse light + specular light)
 	float4 litColor = ambient + directLight;
+
+	float distToCamera = distance(cbCameraPosW, pin.PosW);
+
+#ifdef FOG
+	float fogDensity = saturate((distToCamera- cbFogStart) / cbFogRange);
+	litColor = lerp(litColor, cbFogColor, fogDensity);
+#endif 
 
     litColor.a = diffuseAlbedo.a;
 
