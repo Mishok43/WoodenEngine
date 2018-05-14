@@ -1,9 +1,3 @@
-//***************************************************************************************
-// color.hlsl by Frank Luna (C) 2015 All Rights Reserved.
-//
-// Transforms and colors geometry.
-//***************************************************************************************
-
 // Number of direction lights
 
 #ifndef NUM_DIR_LIGHTS
