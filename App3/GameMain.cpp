@@ -33,7 +33,7 @@ namespace WoodenEngine
 		
 		InitGameResources();
 
-		InitDescriptorHeap();
+		InitDescriptorHeaps();
 
 		InitSwapChain();
 		InitDepthStencilBuffer();
@@ -245,7 +245,7 @@ namespace WoodenEngine
 		auto GrassMaterial = std::make_unique<FMaterialData>("grass");
 		GrassMaterial->iConstBuffer = iConstBuffer;
 		GrassMaterial->FresnelR0 = { 0.01f, 0.01f, 0.01f };
-		GrassMaterial->Roughness = 0.125f;
+		GrassMaterial->Roughness = 0.800f;
 		GrassMaterial->DiffuseTexture = GameResources->GetTextureData("grass");
 		GameResources->AddMaterial(std::move(GrassMaterial));
 		++iConstBuffer;
@@ -384,7 +384,7 @@ namespace WoodenEngine
 		Objects.push_back(std::move(CameraObject));
 	}
 
-	void FGameMain::InitDescriptorHeap()
+	void FGameMain::InitDescriptorHeaps()
 	{
 		D3D12_DESCRIPTOR_HEAP_DESC rtvDescriptorHeapDesc = {};
 		rtvDescriptorHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;

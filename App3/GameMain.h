@@ -19,6 +19,14 @@ namespace WoodenEngine
 	class WObject;
 	class WCamera;
 
+	/*!
+	 * \class FGameMain
+	 *
+	 * \brief The main game class is responsible for rendering and executing logic 
+	 *
+	 * \author devmi
+	 * \date May 2018
+	 */
 	class FGameMain
  	{
 	public:
@@ -76,6 +84,15 @@ namespace WoodenEngine
 		  */
 		bool Initialize(Windows::UI::Core::CoreWindow^ outputWindow);
 	private:
+		
+		/*!
+		 * \enum ERenderLayer
+		 *
+		 * \brief Types of rendrable objects
+		 *
+		 * \author devmi
+		 * \date May 2018
+		 */
 		enum class ERenderLayer: uint8
 		{
 			Opaque = 0,
@@ -84,63 +101,137 @@ namespace WoodenEngine
 			Count
 		};
 
+		/** @brief Returns current back buffer
+		  * @return (ID3D12Resource*)
+		  */
 		ID3D12Resource* CurrentBackBuffer() const;
 		
+		/** @brief Returns current back buffer view
+		  * @return (D3D12_CPU_DESCRIPTOR_HANDLE)
+		  */
 		D3D12_CPU_DESCRIPTOR_HANDLE CurrentBackBufferView() const;
 	
 
-		// Initialize device, fetch property data
+		/** @brief Initializes directx device
+		  * @return (void)
+		  */
 		void InitDevice();
 
-		// Initialize graphics direct command list and command queue
+		
+		/** @brief Initializes cmd queue, lists and allocator
+		  * @return (void)
+		  */
 		void InitCmdQueue();
 		
+		/** @brief Initializes game resources
+		  * @return (void)
+		  */
 		void InitGameResources();
 
+		/** @brief Adds renderable objects
+		  * @return (void)
+		  */
 		void AddObjects();
 
+		/** @brief Loads materials
+		  * @return (void)
+		  */
 		void AddMaterials();
 
+		/** @brief Loads textures
+		  * @return (void)
+		  */
 		void AddTextures();
+		
+		/** @brief Initializes descriptor heaps
+		  * @return (void)
+		  */
+		void InitDescriptorHeaps();
 
-		// Initialize rtv heaps
-		void InitDescriptorHeap();
-
+		/** @brief Initializes device swap chain
+		  * @return (void)
+		  */
 		void InitSwapChain();
 
+		/** @brief Initializes depth stencil buffer
+		  * @return (void)
+		  */
 		void InitDepthStencilBuffer();
 
+		/** @brief Initializes const buffers views for renderable objects
+		  * @return (void)
+		  */
 		void InitConstBuffersViews();
 
+		/** @brief Initializes loaded textures views
+		  * @return (void)
+		  */
 		void InitTexturesViews();
 
+		/** @brief Initializes viewport settins and scissor rectangle
+		  * @return (void)
+		  */
 		void InitViewport();
 
+		/** @brief Animates water materials. Shifts water's textures coordinates
+		  * @return (void)
+		  */
 		void AnimateWaterMaterial();
 
-		// Create RTV for every frame
+		
+		/** @brief Builds frame resources 
+		  * objects + frame consts + materials resource buffers per every frame 
+		  * @return (void)
+		  */
 		void BuildFrameResources();
 
+		/** @brief Builds root signature
+		  * @return (void)
+		  */
 		void BuildRootSignature();
 		
-		// Compile pixel and vertex hlsl shaders
+		
+		/** @brief Compiles pixel and vertex shaders
+		  * @return (void)
+		  */
 		void InitShaders();
 
+		/** @brief Builds pipeline state objects for different render layers
+		  * @return (void)
+		  */
 		void BuildPipelineStateObject();
 
-		// Wait for pending GPU work to complete with signaling
+		
+		/** @brief Signals and waits for gpu until it reaches the current fence
+		  * @return (void)
+		  */
 		void SignalAndWaitForGPU();
 
+		/** @brief Waits for gpu until it reaches the new fence
+		  * If the cmd queue has reached yet -> it just returns without waiting
+		  * @param NewFence Fence to reach (const uint64)
+		  * @return (void)
+		  */
 		void WaitForGPU(const uint64 NewFence);
 
+		/** @brief Updates const buffers of renderable objects
+		  * @return (void)
+		  */
 		void UpdateObjectsConstBuffer();
 		
+		/** @brief Updates const buffers of materials
+		  * @return (void)
+		  */
 		void UpdateMaterialsConstBuffer();
 
+		/** @brief Updates cost buffer of current frame
+		  * @return (void)
+		  */
 		void UpdateFrameConstBuffer();
 
 		std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> GetStaticSamplers() const;
 
+		// Current view camera
 		WCamera* Camera;
 
 		// DX12 Device
@@ -152,12 +243,22 @@ namespace WoodenEngine
 		
 		ComPtr<IDXGISwapChain3> SwapChain;
 
+		// Index of current back buffer
 		uint8 iCurrBackBuffer = 0;
+		
+		// Index of current frame resource
 		uint8 iCurrFrameResource = 0;
+
+		// Current frame resource
 		FFrameResource* CurrFrameResource;
 
+		// Array with all existing objects (renderable and not renderable)
 		std::vector<std::unique_ptr<WObject>> Objects;
+
+		// Array with renderable objects. It's divided to several render layers. 
+		// See ERenderLayer
 		std::vector<WObject*> RenderableObjects[(uint8)ERenderLayer::Count];
+
 
 		std::unique_ptr<FGameResource> GameResources;
 		std::unique_ptr<FFrameResource> FramesResource[NMR_SWAP_BUFFERS];

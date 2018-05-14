@@ -21,12 +21,28 @@ namespace WoodenEngine
 
 		virtual void Update(float Delta) override;
 
+		/** @brief Moves camera forward by Speed regarding the camera's forward vector
+		  * @param Speed Displacement (it can be negative for back walking) (float)
+		  * @return (void)
+		  */
 		void WalkForward(float Speed);
 
+		/** @brief Moves camera right by Speed regarding the camera's right vector
+		  * @param Speed Displacement (it can be negative for left walking) (float)
+		  * @return (void)
+		  */
 		void WalkRight(float Speed);
 
+		/** @brief Lifts up the camera, reducing Pitch angle, regarding the camera's right vector
+		  * @param Angle Pitch angle (float)
+		  * @return (void)
+		  */
 		void LookUp(float Angle);
 
+		/** @brief Turns right the camera regarding the world's up vector {0, 1, 0}
+		  * @param Angle (float)
+		  * @return (void)
+		  */
 		void LookRight(float Angle);
 
 		/** @brief Moves camera view
@@ -58,22 +74,27 @@ namespace WoodenEngine
 		float WindowHeight;
 
 		XMFLOAT3 Up = { 0.0f, 1.0f, 0.0f };
+		
 		XMFLOAT3 Right = { 1.0f, 0.0f, 0.0f };
+
 		XMFLOAT3 Forward = { 0.0f, 0.0f, 1.0f };
 
 		// View matrix for rendering
 		XMMATRIX View;
 
+		// If true camera moves forward per every update call
 		bool bMoveForward;
+
+		// If true camera moves back per every update call
 		bool bMoveBack;
+
+		// If true camera moves right per every update call
 		bool bMoveRight;
+
+		// If true camera moves left per every update call
 		bool bMoveLeft;
 
-		float LookUpAngle = 0;
-		float LookRightAngle = 0;
-
-
-		/** @brief Recompute view matrix based on XAngle, ZAngle, ViewRadius for rendering
+		/** @brief Recomputes view matrix based on XAngle, ZAngle, ViewRadius for rendering
 		  * @return (void)
 		  */
 		void UpdateViewMatrix() noexcept;

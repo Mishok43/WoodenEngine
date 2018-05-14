@@ -265,10 +265,9 @@ namespace WoodenEngine
 		 * diff(y, z) = -3*sin(x)
 		 * TangentX = [1 3*cos(x) 0]
 		 * TangentZ = [0 -3*sin(z) 1]
-		 * Normal = Cross(TangentZ, TangentX)
+		 * Normal = Cross(TangentZ, TangentX) (because of left-handed coordinate system, first - TZ, second TX)
 		 * Normal = [-3cosx 1 3sinz]
 		 */
-
 		
 		for (auto& Vertex : GridData->Vertices)
 		{

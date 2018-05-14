@@ -58,6 +58,7 @@ namespace WoodenEngine
 
 		XMFLOAT4X4 TempView;
 
+		// normalize them because of possible approximation errors
 		F = XMVector3Normalize(F);
 		U = XMVector3Normalize(XMVector3Cross(F, R));
 		R = XMVector3Cross(U, F);

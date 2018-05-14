@@ -76,13 +76,13 @@ namespace WoodenEngine
 	struct SObjectData
 	{
 		// Matrix for converting local coordinates to world space
-		XMFLOAT4X4 WorldMatrix; // 64B
+		XMFLOAT4X4 WorldMatrix; 
 
 		// Matrix for transforming material (UV-coordinates)
 		XMFLOAT4X4 MaterialTransform;
 		
 		// Object's life time
-		float Time; // 4B
+		float Time; 
 
 		// Cruch. 
 		int IsWater = false;
