@@ -17,14 +17,14 @@ namespace WoodenEngine
 
 	}
 
-	std::unique_ptr<FMeshData> FMeshGenerator::CreateBox(
+	std::unique_ptr<FMeshRawData> FMeshGenerator::CreateBox(
 		float Width, 
 		float Height, 
 		float Depth,
 		uint32 NumSubdivisions
 	) const noexcept
 	{
-		auto BoxMeshData = std::make_unique<FMeshData>("Box");
+		auto BoxMeshData = std::make_unique<FMeshRawData>("Box");
 
 		const auto WidthHalf = Width / 2.0f;
 		const auto HeightHalf = Height / 2.0f;
@@ -102,12 +102,12 @@ namespace WoodenEngine
 		return BoxMeshData;
 	}
 
-	std::unique_ptr<FMeshData> FMeshGenerator::CreateSphere(
+	std::unique_ptr<FMeshRawData> FMeshGenerator::CreateSphere(
 		float Radius,
 		uint32 NumVSubdivisions,
 		uint32 NumHSubdivisions) const noexcept
 	{
-		auto SphereMeshData = std::make_unique<FMeshData>("Sphere");
+		auto SphereMeshData = std::make_unique<FMeshRawData>("Sphere");
 		SphereMeshData->Vertices.resize(2 + (NumVSubdivisions - 1)*(NumHSubdivisions + 1));
 		SphereMeshData->Indices.resize(NumHSubdivisions*NumVSubdivisions * 2 * 3);
 
@@ -160,7 +160,6 @@ namespace WoodenEngine
 
 		SphereMeshData->Vertices[iVertex] = std::move(BottomVertex);
 
-
 		int iIndex = 0;
 		for (auto iVertex = 1; iVertex <= NumHSubdivisions; ++iVertex, iIndex+=3)
 		{
@@ -168,7 +167,6 @@ namespace WoodenEngine
 			SphereMeshData->Indices[iIndex + 1] = iVertex + 1;
 			SphereMeshData->Indices[iIndex + 2] = iVertex;
 		}
-
 
 		const auto NumVertexInRing = NumHSubdivisions + 1;
 		for (auto iVSubdivision = 0; iVSubdivision < NumVSubdivisions-2; ++iVSubdivision)
@@ -198,9 +196,9 @@ namespace WoodenEngine
 		return SphereMeshData;
 	}
 
-	std::unique_ptr<FMeshData> FMeshGenerator::CreateGrid(float Width, float Height, uint32 NumVSubdivisions, uint32 NumHSubdivisions) const noexcept
+	std::unique_ptr<FMeshRawData> FMeshGenerator::CreateGrid(float Width, float Height, uint32 NumVSubdivisions, uint32 NumHSubdivisions) const noexcept
 	{
-		auto MeshData = std::make_unique<FMeshData>("Grid");
+		auto MeshData = std::make_unique<FMeshRawData>("Grid");
 
 		uint32 NumVertex = (NumHSubdivisions+1) * (NumVSubdivisions+1);
 		MeshData->Vertices.resize(NumVertex);
@@ -250,7 +248,7 @@ namespace WoodenEngine
 		return MeshData;
 	}
 
-	std::unique_ptr<WoodenEngine::FMeshData> FMeshGenerator::CreateLandscapeGrid(
+	std::unique_ptr<WoodenEngine::FMeshRawData> FMeshGenerator::CreateLandscapeGrid(
 		float Width,
 		float Height, 
 		uint32 NumVSubdivisions, 
@@ -261,12 +259,13 @@ namespace WoodenEngine
 		/* Change Y coordinate of grid's vertices, based on the formula:
 		 * y = 0.5*(sin(0.2x)x + cos(0.2z)z)
 		 * By finding partial derivatives, we can find normal vector:
-		 * diff(y, x) = 3*cos(x)
-		 * diff(y, z) = -3*sin(x)
-		 * TangentX = [1 3*cos(x) 0]
-		 * TangentZ = [0 -3*sin(z) 1]
+		 * diff(y, x) = sin(x/5)/2 + x*cos(x/5)/10
+		 * diff(y, z) = cos(x/5)/2 - z*sin(z/5)/10
+		 * TangentX = [1 diff(y, x) 0] 
+		 * TangentZ = [0 diff(y, z) 1]
+		 * Tangent = TangentX + TangentZ
 		 * Normal = Cross(TangentZ, TangentX) (because of left-handed coordinate system, first - TZ, second TX)
-		 * Normal = [-3cosx 1 3sinz]
+		 * Normal = [-sin(x/5)/2-x*cos(x/5)/10 1 z*sin(z/5)/10-cos(z/5)/2]
 		 */
 		
 		for (auto& Vertex : GridData->Vertices)
@@ -291,7 +290,7 @@ namespace WoodenEngine
 		return GridData;
 	}
 
-	void FMeshGenerator::Subdivide(FMeshData* MeshData) const noexcept
+	void FMeshGenerator::Subdivide(FMeshRawData* MeshData) const noexcept
 	{
 		const auto CopiedMeshData = *MeshData;
 
@@ -334,10 +333,10 @@ namespace WoodenEngine
 		}
 	}
 
-	std::unique_ptr<FMeshData> FMeshParser::ParseTxtData(const std::string& FilePath) const
+	std::unique_ptr<FMeshRawData> FMeshParser::ParseTxtData(const std::string& FilePath) const
 	{
 		// use smart pointer for preventing memory leak if exception is thrown
-		auto MeshData = std::make_unique<FMeshData>();
+		auto MeshData = std::make_unique<FMeshRawData>();
 
 		std::ifstream File;
 		File.open(FilePath, std::ios_base::in);

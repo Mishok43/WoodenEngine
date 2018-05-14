@@ -22,8 +22,8 @@ namespace WoodenEngine
 	 */
 	class FGameResource
 	{
-	public: 
-		using FMaterialsData = 
+	public:
+		using FMaterialsData =
 			std::unordered_map<std::string, std::unique_ptr<FMaterialData>>;
 
 		using FMeshesData =
@@ -47,17 +47,20 @@ namespace WoodenEngine
 		  */
 		void SetDevice(ComPtr<ID3D12Device> Device);
 
-		/** @brief Method load an array of meshes to video and cpu memory. 
-		  *	(The Device must be set!) 
-		  * @param MeshesData An array of meshes.
-		  * It'll have only nullptrs after executing function (const std::vector<FMeshData> &&)
+		/** @brief Method load an array of meshes to video and cpu memory.
+		  *	(The Device must be set!)
+		  * @param SubmeshesData An array of submeshes
+		  * It'll have only nullptrs after executing function 
+		  * (const std::vector<std::unique_ptr<FMeshRawData>> &&)
+		  * @param MeshName Mesh name of group of the submehes (const std::string& )
 		  * @param CmdList A Graphics Command List for comitting vertex and indices resources
 		  * @return (void)
 		  */
-		void LoadMeshes(
-			std::vector<std::unique_ptr<FMeshData>>&& MeshesData,
+		void LoadStaticMesh(
+			std::vector<std::unique_ptr<FMeshRawData>>&& SubmeshesData,
+			const std::string& MeshName,
 			ComPtr<ID3D12GraphicsCommandList> CmdList);
-		
+
 		/** @brief Adds material data to cache for future access
 		  * @param MaterialData Unique ptr to material data (std::unique_ptr<FMaterialData>)
 		  * @return (void)
@@ -82,14 +85,25 @@ namespace WoodenEngine
 		  */
 		FMaterialData* GetMaterialData(const std::string& MaterialName) const;
 
-		/** @brief Find a mesh data by name and returns it.
-		  * Throws exception if no mesh data is associated with the name 
-		  * @param MeshName Name of mesh data(const std::string &)
-		  * @return Mesh data associated with the name (WoodenEngine::FMeshData)
+		/** @brief Finds a submesh data by its name and name of mesh which contains it
+			and returns it.
+		  * Throws exception if no mesh data is associated with the names
+		  * @param MeshName Name of mesh data which contains this submesh (const std::string &)
+		  * @param Submesh Name of submesh data (const std::string&)
+		  * @return Submesh data associated with the name (WoodenEngine::FMeshData)
+		  */
+		const FSubmeshData& GetSubmeshData(
+			const std::string& MeshName,
+			const std::string& SubmeshName) const;
+
+		/** @brief Finds a mesh data by its name
+		   * Throws invalid_argument exception if there's no mesh data with the name
+		  * @param MeshName Mesh name (const std::string &)
+		  * @return MeshData (const WoodenEngine::FMeshData&)
 		  */
 		const FMeshData& GetMeshData(const std::string& MeshName) const;
 
-		/** @brief Returns number of materils
+		/** @brief Returns number of materials
 		  * @return Number of materials (default::uint64)
 		  */
 		uint64 GetNumMaterials() const noexcept;
@@ -115,44 +129,17 @@ namespace WoodenEngine
 		  */
 		const uint32 GetNumTexturesData() const noexcept;
 
-		/** @brief Returns vertex buffer view
-		  * @return Vertex buffer view (D3D12_VERTEX_BUFFER_VIEW)
-		  */
-		D3D12_VERTEX_BUFFER_VIEW GetVertexBufferView() const noexcept;
-
-		/** @brief Returns index buffer view
-		  * @return Index buffer view (D3D12_INDEX_BUFFER_VIEW)
-		  */
-		D3D12_INDEX_BUFFER_VIEW GetIndexBufferView() const noexcept;
 	private:
 		// Hash-Table consists of static meshes data, where key is a mesh's name
 		FMeshesData StaticMeshesData;
-		
+
 		// Hash-table consists of materials data, where key is a material's name
 		FMaterialsData MaterialsData;
 
 		// Hash-table consists of textures data, where key is a texture's name
 		FTexturesData TexturesData;
 
-		// Dynamic array of all static meshes' vertices 
-		std::vector<SVertexData> VerticesData;
-
-		// Dynamic array of all static meshes' indices
-		std::vector<uint16> IndicesData;
-		
 		// DX12 Device
 		ComPtr<ID3D12Device> Device;
-	
-		// DX12 Buffer of vertices of static meshes
-		ComPtr<ID3D12Resource> VertexBuffer;
-		ComPtr<ID3D12Resource> VertexUploadBuffer;
-
-		D3D12_VERTEX_BUFFER_VIEW VertexBufferView;
-
-		// DX12 Buffer of indices of static meshes
-		ComPtr<ID3D12Resource> IndexBuffer;
-		ComPtr<ID3D12Resource> IndexUploadBuffer;
-
-		D3D12_INDEX_BUFFER_VIEW IndexBufferView;
-		};
+	};
 }

@@ -30,6 +30,7 @@ namespace WoodenEngine
 			
 			/** @brief 
 			  * @param MeshName Name of static mesh (const std::string &)
+			  * @param SubmeshName Name of submesh (const std::string &)
 			  * @param Position Absolute world position (const XMFLOAT3 &)
 			  * @param Rotation Absolute world rotation (const XMFLOAT3 &)
 			  * @param Scale Absolute world scale (const XMFLOAT3 &)
@@ -37,6 +38,7 @@ namespace WoodenEngine
 			  */
 			WObject(
 				const std::string& MeshName, 
+				const std::string& SubmeshName,
 				const XMFLOAT3& Position = { 0.0f, 0.0f, 0.0f },
 				const XMFLOAT3& Rotation = { 0.0f, 0.0f, 0.0f },
 				const XMFLOAT3& Scale = { 1.0f, 1.0f, 1.0f });
@@ -91,6 +93,14 @@ namespace WoodenEngine
 			  */
 			void SetMaterial(const FMaterialData* Material);
 
+			
+			/** @brief Sets world's transform
+			  * @warning Be careful, call it only if it's necessary
+			  * @param WorldTransform (const XMMATRIX &)
+			  * @return (void)
+			  */
+			virtual void SetWorldTransform(const XMMATRIX& WorldTransform) noexcept;
+			
 			/** @brief Sets absolute world position
 			  * @param Position An absolute world position (const XMFLOAT3 &)
 			  * @return (void)
@@ -171,7 +181,7 @@ namespace WoodenEngine
 			/** @brief Returns object's world matrix for rendering
 			  * @return World matrix (DirectX::XMMATRIX)
 			  */
-			const XMMATRIX& GetWorldMatrix() const noexcept;
+			const XMMATRIX& GetWorldTransform() const noexcept;
 
 			/** @brief Returns object's world absolute position
 			  * @return World absolution position (DirectX::XMFLOAT3)
@@ -192,6 +202,12 @@ namespace WoodenEngine
 			  * @return Name of mesh data(const std::string&)
 			  */
 			const std::string& GetMeshName() const;
+
+			/** @brief Returns name of submesh data. 
+			  * If it's empty, method throws exception
+			  * @return Name of submesh data(const std::string&)
+			  */
+			const std::string& GetSubmeshName() const;
 
 			/** @brief Returns pointer to material data or nullptr 
 			  * @return (WoodenEngine::FMaterialData*)
@@ -251,7 +267,7 @@ namespace WoodenEngine
 			bool bIsEnabledInputEvents = false;
 		private:	
 			// Absolute matrix of transformation in the world. Used for rendering
-			XMMATRIX WorldMatrix = DirectX::XMMatrixIdentity();
+			XMMATRIX WorldTransform = DirectX::XMMatrixIdentity();
 			
 			// Vector with an absolute position in the world
 			XMFLOAT3 Position;
@@ -271,9 +287,12 @@ namespace WoodenEngine
 			// Life time in seconds
 			float LifeTime = 0;
 
-			// Current mesh data name
+			// Mesh data name
 			std::string MeshName;
 	
+			// Submesh name
+			std::string SubmeshName;
+
 			// Index of object in const buffer
 			uint64 iConstBuffer = UINT64_MAX;
 
@@ -288,6 +307,6 @@ namespace WoodenEngine
 			/** @brief Recomputes the world matrix considering Position, Rotation and Scale in the world
 			  * @return (void)
 			  */
-			void UpdateWorldMatrix() noexcept;
+			void UpdateWorldTransform() noexcept;
 	};
 }

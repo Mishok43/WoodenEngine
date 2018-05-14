@@ -1,6 +1,7 @@
 #pragma once
 #include <iostream>
 #include <string>
+#include <unordered_map>
 
 #include "ShaderStructures.h"
 
@@ -67,26 +68,88 @@ namespace WoodenEngine
 
 
 	/*!
-	* \struct FMeshData
+	* \struct FMeshRawData
 	*
-	* \brief Structure contains mesh data - vertices and indices
+	* \brief Contains raw meshes data - only vertices and indices
 	*
 	* \author devmi
 	* \date April 2018
 	*/
+	struct FMeshRawData
+	{
+		FMeshRawData() = default;
+
+		FMeshRawData(const std::string& Name):
+			Name(Name)
+		{ }
+
+		std::vector<FVertex> Vertices;
+		std::vector<uint16> Indices;
+
+		std::string Name;
+	};
+
+	/*!
+	 * \class FSubmeshData
+	 *
+	 * \brief Contains submesh data
+	 *
+	 * \author devmi
+	 * \date May 2018
+	 */
+	struct FSubmeshData
+	{
+		FSubmeshData() = default;
+
+		FSubmeshData(const std::string& Name) :
+			Name(Name)
+		{
+		}
+
+		std::string Name;
+
+		uint64 IndexBegin;
+		uint64 NumIndices;
+		uint16 VertexBegin;
+	};
+
+	/*!
+	 * \class FMeshData
+	 *
+	 * \brief Contains resources, views for vertices, indices of all submeshes
+	 *
+	 * \author devmi
+	 * \date May 2018
+	 */
 	struct FMeshData
 	{
 		FMeshData() = default;
 
+		FMeshData(const FMeshData& MeshData) = delete;
+		FMeshData& operator=(const FMeshData& MeshData) = delete;
+
 		FMeshData(const std::string& Name):
 			Name(Name)
-		{}
+		{ }
 
 		std::string Name;
-		std::vector<FVertex> Vertices;
-		std::vector<uint16> Indices;
-		uint64 IndexBegin;
-		uint64 VertexBegin;
+
+		// DX12 Buffer of vertices of static meshes
+		ComPtr<ID3D12Resource> VertexBuffer;
+		ComPtr<ID3D12Resource> VertexUploadBuffer;
+
+		D3D12_VERTEX_BUFFER_VIEW VertexBufferView;
+
+		// DX12 Buffer of indices of static meshes
+		ComPtr<ID3D12Resource> IndexBuffer;
+		ComPtr<ID3D12Resource> IndexUploadBuffer;
+
+		D3D12_INDEX_BUFFER_VIEW IndexBufferView;
+
+		std::vector<SVertexData> VerticesData;
+		std::vector<uint16> IndicesData;
+		
+		std::unordered_map<std::string, std::unique_ptr<FSubmeshData>> SubmeshesData;
 	};
 
 	/*!
@@ -114,7 +177,7 @@ namespace WoodenEngine
 		  * @param NumSubdivisions (uint32)
 		  * @return Mesh data of generated box (DirectXEngine::MeshData)
 		  */
-		std::unique_ptr<FMeshData> CreateBox(
+		std::unique_ptr<FMeshRawData> CreateBox(
 			float Width,
 			float Height,
 			float Depth,
@@ -127,7 +190,7 @@ namespace WoodenEngine
 		  * @param NumHSubdivisions (uint32)
 		  * @return Mesh data of generated sphere (DirectXEngine::MeshData)
 		  */
-		std::unique_ptr<FMeshData> CreateSphere(
+		std::unique_ptr<FMeshRawData> CreateSphere(
 			float Radius,
 			uint32 NumVSubdivisions,
 			uint32 NumHSubdivisions
@@ -141,7 +204,7 @@ namespace WoodenEngine
 		  * @param NumHSubdivisions Number horizontal squares (uint32)
 		  * @return (std::unique_ptr<WoodenEngine::FMeshData>)
 		  */
-		std::unique_ptr<FMeshData> CreateGrid(
+		std::unique_ptr<FMeshRawData> CreateGrid(
 			float Width,
 			float Height,
 			uint32 NumVSubdivisions,
@@ -157,7 +220,7 @@ namespace WoodenEngine
 		  * @param NumHSubdivisions (uint32)
 		  * @return (std::unique_ptr<WoodenEngine::FMeshData>)
 		  */
-		std::unique_ptr<FMeshData> CreateLandscapeGrid(
+		std::unique_ptr<FMeshRawData> CreateLandscapeGrid(
 			float Width,
 			float Height,
 			uint32 NumVSubdivisions,
@@ -168,7 +231,7 @@ namespace WoodenEngine
 		  * @param MeshData Mesh data (FMeshData* MeshData)
 		  * @return (void)
 		  */
-		void Subdivide(FMeshData* MeshData) const noexcept;
+		void Subdivide(FMeshRawData* MeshData) const noexcept;
 	};
 
 	/*!
@@ -193,12 +256,12 @@ namespace WoodenEngine
 		* @param FilePath Path to file (format: *.txt) with mesh data (const std::string &)
 		* @return Parsed mesh data (WoodenEngine::FMeshData)
 		*/
-		std::unique_ptr<FMeshData>ParseTxtData(const std::string& FilePath) const;
+		std::unique_ptr<FMeshRawData>ParseTxtData(const std::string& FilePath) const;
 
 		/** @brief Parses external .obj file with mesh data
 		* @param FilePath Path to file (format: *.obj) with mesh data (const std::string &)
 		* @return Parsed mesh data (WoodenEngine::FMeshData)
 		*/
-		std::unique_ptr<FMeshData> ParseObjFile(const std::string& FilePath) const;
+		std::unique_ptr<FMeshRawData> ParseObjFile(const std::string& FilePath) const;
 	};
 }

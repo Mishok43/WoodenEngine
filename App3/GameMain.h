@@ -30,6 +30,26 @@ namespace WoodenEngine
 	class FGameMain
  	{
 	public:
+
+		/*!
+		* \enum ERenderLayer
+		*
+		* \brief Types of rendrable objects
+		*
+		* \author devmi
+		* \date May 2018
+		*/
+		enum class ERenderLayer : uint8
+		{
+			Opaque = 0,
+			Transparent,
+			AlphaTested,
+			Mirrors,
+			Reflected,
+			Count
+		};
+
+
 		FGameMain();
 		
 		FGameMain(FGameMain&& GameMain) = delete;
@@ -78,29 +98,22 @@ namespace WoodenEngine
 			ComPtr<ID3D12GraphicsCommandList> CMDList
 		);
 
+		/** @brief Renders list of renderable objects of specific render layer
+		  * @param RenderLayer Render layer (ERenderLayer)
+		  * @param CMDList Current command list for sending commands (ComPtr<ID3D12GraphicsCommandList>)
+		  * @return (void)
+		  */
+		void RenderObjects(
+			ERenderLayer RenderLayer,
+			ComPtr<ID3D12GraphicsCommandList> CMDList
+		);
+
 		/** @brief Init dx12 device and other components
 		  * @param outputWindow (Windows::UI::Core::CoreWindow ^)
 		  * @return (bool)
 		  */
 		bool Initialize(Windows::UI::Core::CoreWindow^ outputWindow);
 	private:
-		
-		/*!
-		 * \enum ERenderLayer
-		 *
-		 * \brief Types of rendrable objects
-		 *
-		 * \author devmi
-		 * \date May 2018
-		 */
-		enum class ERenderLayer: uint8
-		{
-			Opaque = 0,
-			Transparent,
-			AlphaTested,
-			Count
-		};
-
 		/** @brief Returns current back buffer
 		  * @return (ID3D12Resource*)
 		  */
@@ -158,11 +171,6 @@ namespace WoodenEngine
 		  */
 		void InitDepthStencilBuffer();
 
-		/** @brief Initializes const buffers views for renderable objects
-		  * @return (void)
-		  */
-		void InitConstBuffersViews();
-
 		/** @brief Initializes loaded textures views
 		  * @return (void)
 		  */
@@ -219,6 +227,14 @@ namespace WoodenEngine
 		  */
 		void UpdateObjectsConstBuffer();
 		
+		/** @brief Updates reflection buffers of 
+		  * @return (void)
+		  */
+		void UpdateReflectedObjectsConstBuffer();
+
+
+		void UpdateReflectedFrameConstBuffer();
+
 		/** @brief Updates const buffers of materials
 		  * @return (void)
 		  */
@@ -233,6 +249,8 @@ namespace WoodenEngine
 
 		// Current view camera
 		WCamera* Camera;
+
+		XMVECTOR MirrorPlane;
 
 		// DX12 Device
 		ComPtr<ID3D12Device> Device;
@@ -263,7 +281,7 @@ namespace WoodenEngine
 		std::unique_ptr<FGameResource> GameResources;
 		std::unique_ptr<FFrameResource> FramesResource[NMR_SWAP_BUFFERS];
 
-		SFrameData ConstFrameData;
+		SFrameData FrameConstData;
 
 		ComPtr<ID3D12Resource> SwapChainBuffers[NMR_SWAP_BUFFERS];
 		ComPtr<ID3D12Resource> DepthStencilBuffer;
@@ -278,7 +296,6 @@ namespace WoodenEngine
 
 		ComPtr<ID3D12DescriptorHeap> DSVDescriptorHeap;
 		ComPtr<ID3D12DescriptorHeap> RTVDescriptorHeap;
-		ComPtr<ID3D12DescriptorHeap> CBVDescriptorHeap;
 		ComPtr<ID3D12DescriptorHeap> SRVDescriptorHeap;
 
 		D3D12_VIEWPORT ScreenViewport;

@@ -4,16 +4,18 @@ namespace WoodenEngine
 {
 	WObject::WObject(
 		const std::string& MeshName,
+		const std::string& SubmeshName,
 		const XMFLOAT3& Position, 
 		const XMFLOAT3& Rotation, 
 		const XMFLOAT3& Scale) : 
 		MeshName(MeshName), 
+		SubmeshName(SubmeshName),
 		Position(Position), 
 		Rotation(Rotation), 
 		Scale(Scale),
 		bIsRenderable(true)
 	{
-		UpdateWorldMatrix();
+		UpdateWorldTransform();
 	}
 
 
@@ -26,7 +28,7 @@ namespace WoodenEngine
 	void WObject::SetPosition(const XMFLOAT3& Position) noexcept
 	{
 		this->Position = Position;
-		UpdateWorldMatrix();
+		UpdateWorldTransform();
 	}
 
 	void WObject::SetPosition(const float X, const float Y, const float Z) noexcept
@@ -37,7 +39,7 @@ namespace WoodenEngine
 	void WObject::SetRotation(const XMFLOAT3& Rotation) noexcept
 	{
 		this->Rotation = Rotation;
-		UpdateWorldMatrix();
+		UpdateWorldTransform();
 	}
 
 	void WObject::SetRotation(const float X, const float Y, const float Z) noexcept
@@ -48,7 +50,7 @@ namespace WoodenEngine
 	void WObject::SetScale(const XMFLOAT3& Scale) noexcept
 	{
 		this->Scale = Scale;
-		UpdateWorldMatrix();
+		UpdateWorldTransform();
 	}
 
 	void WObject::SetScale(const float X, const float Y, const float Z) noexcept
@@ -61,9 +63,9 @@ namespace WoodenEngine
 		this->Color = Color;
 	}
 
-	void WObject::UpdateWorldMatrix() noexcept 
+	void WObject::UpdateWorldTransform() noexcept 
 	{
-		WorldMatrix = 
+		WorldTransform = 
 			DirectX::XMMatrixScalingFromVector(XMLoadFloat3(&Scale))*
 			DirectX::XMMatrixRotationRollPitchYawFromVector(XMLoadFloat3(&Rotation))*
 			DirectX::XMMatrixTranslationFromVector(XMLoadFloat3(&Position));
@@ -100,6 +102,11 @@ namespace WoodenEngine
 		}
 
 		this->Material = Material;
+	}
+
+	void WObject::SetWorldTransform(const XMMATRIX& WorldTransform) noexcept
+	{
+		this->WorldTransform = WorldTransform;
 	}
 
 	void WObject::SetIsUpdating(const bool IsUpdating) noexcept
@@ -145,8 +152,22 @@ namespace WoodenEngine
 
 	const std::string& WObject::GetMeshName() const
 	{
-		assert(MeshName.size() != 0);
+		if (MeshName.empty())
+		{
+			throw std::length_error("Mesh name is empty");
+		}
+
 		return MeshName;
+	}
+
+	const std::string& WObject::GetSubmeshName() const
+	{
+		if (SubmeshName.empty())
+		{
+			throw std::length_error("Submesh name is empty");
+		}
+
+		return SubmeshName;
 	}
 
 	const FMaterialData* WObject::GetMaterial() const noexcept
@@ -159,9 +180,9 @@ namespace WoodenEngine
 		return TextureTransform;
 	}
 
-	const XMMATRIX& WObject::GetWorldMatrix() const noexcept
+	const XMMATRIX& WObject::GetWorldTransform() const noexcept
 	{
-		return WorldMatrix;
+		return WorldTransform;
 	}
 
 	XMFLOAT3 WObject::GetWorldPosition() const noexcept

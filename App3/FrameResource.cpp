@@ -12,7 +12,7 @@ namespace WoodenEngine
 				D3D12_COMMAND_LIST_TYPE_DIRECT,
 				IID_PPV_ARGS(&CmdListAllocator)));
 
-		FrameDataBuffer = std::make_unique<DX::FUploadBuffer<SFrameData>>(Device, 1, true);
+		FrameDataBuffer = std::make_unique<DX::FUploadBuffer<SFrameData>>(Device, 2, true);
 		ObjectsDataBuffer = std::make_unique<DX::FUploadBuffer<SObjectData>>(Device, NumObjects, true);
 		MaterialsDataBuffer = std::make_unique<DX::FUploadBuffer<SMaterialData>>(Device, NumMaterials, true);
 	}

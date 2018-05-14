@@ -18,82 +18,116 @@ namespace WoodenEngine
 	{
 	}
 
-	void FGameResource::LoadMeshes(
-		std::vector<std::unique_ptr<FMeshData>>&& MeshesData,
+	void FGameResource::LoadStaticMesh(
+		std::vector<std::unique_ptr<FMeshRawData>>&& SubmeshesData,
+		const std::string& MeshName,
 		ComPtr<ID3D12GraphicsCommandList> CMDList)
 	{
-		assert(MeshesData.size() != 0);
+		if (SubmeshesData.empty())
+		{
+			throw std::invalid_argument("SubmeshesData must be not empty");
+		}
 
-		uint64 NumVertices = 0;
+		if (MeshName.empty())
+		{
+			throw std::invalid_argument("MeshName must be not empty");
+		}
+
+		auto StaticMeshesDataIter = StaticMeshesData.find(MeshName);
+		if (StaticMeshesDataIter != StaticMeshesData.end())
+		{
+			throw std::invalid_argument("A mesh with the name " + MeshName + " exists yet");
+		}
+
+		auto MeshData = std::make_unique<FMeshData>(MeshName);
+
+		uint16 NumVertices = 0;
 		uint64 NumIndices = 0;
 		
-		for (auto iMesh = 0; iMesh < MeshesData.size(); ++iMesh)
+		for (auto iMesh = 0; iMesh < SubmeshesData.size(); ++iMesh)
 		{
-			auto MeshData = MeshesData[iMesh].get();
+			auto MeshData = SubmeshesData[iMesh].get();
 
 			NumVertices += MeshData->Vertices.size();
 			NumIndices += MeshData->Indices.size();
 		}
 
-		VerticesData.reserve(NumVertices);
-		IndicesData.reserve(NumIndices);
+		MeshData->VerticesData.reserve(NumVertices);
+		MeshData->IndicesData.reserve(NumIndices);
 		
-		auto VertexDataIter = VerticesData.cend();
-		auto IndexDataIter = IndicesData.cend();
+		auto VertexDataIter = MeshData->VerticesData.cend();
+		auto IndexDataIter = MeshData->IndicesData.cend();
+
 		// Adding vertices and indices of every mesh to common arrays
-		for (auto iMesh = 0; iMesh < MeshesData.size(); ++iMesh)
+		for (auto iMesh = 0; iMesh < SubmeshesData.size(); ++iMesh)
 		{
-			auto MeshData = MeshesData[iMesh].get();
-			MeshData->VertexBegin = VerticesData.size();
+			auto SubmeshRawData = SubmeshesData[iMesh].get();
+			
+			auto SubmeshData = std::make_unique<FSubmeshData>(SubmeshRawData->Name);
+			SubmeshData->VertexBegin = MeshData->VerticesData.size();
+			SubmeshData->IndexBegin = MeshData->IndicesData.size();
+			SubmeshData->NumIndices = SubmeshRawData->Indices.size();
 
-			const auto VertexDataNewSize = VerticesData.size() + MeshData->Vertices.size();
+			const auto VertexDataNewSize = MeshData->VerticesData.size() + SubmeshRawData->Vertices.size();
 
-			for (auto i = MeshData->VertexBegin; i < VertexDataNewSize; i++)
+			for (auto i = SubmeshData->VertexBegin; i < VertexDataNewSize; i++)
 			{
-				const auto iVertex = i - MeshData->VertexBegin;
+				const auto iVertex = i - SubmeshData->VertexBegin;
 
-				const SVertexData Vertex = 
-				{ MeshData->Vertices[iVertex].Position, MeshData->Vertices[iVertex].Normal, MeshData->Vertices[iVertex].TexC };
-				VertexDataIter = VerticesData.insert(VertexDataIter, std::move(Vertex));
+				SVertexData Vertex = { 
+					SubmeshRawData->Vertices[iVertex].Position,
+					SubmeshRawData->Vertices[iVertex].Normal, 
+					SubmeshRawData->Vertices[iVertex].TexC 
+				};
+
+				VertexDataIter =  MeshData->VerticesData.insert(VertexDataIter, std::move(Vertex));
 				VertexDataIter++;
 			}
 
-			MeshData->IndexBegin = IndicesData.size();
-
-			const auto IndexDataNewSize = IndicesData.size() + MeshData->Indices.size();
 			
-			for (auto i = MeshData->IndexBegin; i < IndexDataNewSize; i++)
+			const auto IndexDataNewSize = MeshData->IndicesData.size() + SubmeshRawData->Indices.size();
+			
+			for (auto i = SubmeshData->IndexBegin; i < IndexDataNewSize; i++)
 			{
-				const auto Index = MeshData->Indices[i - MeshData->IndexBegin];
-				IndexDataIter = IndicesData.insert(IndexDataIter, std::move(Index));
+				auto Index = SubmeshRawData->Indices[i - SubmeshData->IndexBegin];
+				
+				IndexDataIter = MeshData->IndicesData.insert(IndexDataIter, std::move(Index));
 				IndexDataIter++;
 			}
 
-			StaticMeshesData.insert(std::make_pair(MeshData->Name, std::move(MeshesData[iMesh])));
+			MeshData->SubmeshesData.insert(std::make_pair(SubmeshRawData->Name, std::move(SubmeshData)));
 		}
 
 		// Create vertex buffer 
-		const auto VertexBufferSize = sizeof(SVertexData)*VerticesData.size();
+		const auto VertexBufferSize = sizeof(SVertexData)*MeshData->VerticesData.size();
 
-		VertexBuffer = DX::CreateBuffer(Device, CMDList, VertexBufferSize, VerticesData.data(), VertexUploadBuffer);
+		MeshData->VertexBuffer = DX::CreateBuffer(Device, CMDList, 
+			VertexBufferSize, MeshData->VerticesData.data(), MeshData->VertexUploadBuffer);
 
-		CMDList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(VertexBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER));
+		CMDList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
+			MeshData->VertexBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, 
+			D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER));
 
 		// Setup vertex buffer view
-		VertexBufferView.BufferLocation = VertexBuffer->GetGPUVirtualAddress();
-		VertexBufferView.SizeInBytes = VertexBufferSize;
-		VertexBufferView.StrideInBytes = sizeof(SVertexData);
+		MeshData->VertexBufferView.BufferLocation = MeshData->VertexBuffer->GetGPUVirtualAddress();
+		MeshData->VertexBufferView.SizeInBytes = VertexBufferSize;
+		MeshData->VertexBufferView.StrideInBytes = sizeof(SVertexData);
 
 		// Create index buffer
-		const auto IndexBufferSize = 2*IndicesData.size();
-		IndexBuffer = DX::CreateBuffer(Device, CMDList, IndexBufferSize, IndicesData.data(), IndexUploadBuffer);
+		const auto IndexBufferSize = sizeof(uint16)*MeshData->IndicesData.size();
+		MeshData->IndexBuffer = DX::CreateBuffer(Device, CMDList,
+			IndexBufferSize, MeshData->IndicesData.data(), MeshData->IndexUploadBuffer);
 
-		CMDList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(IndexBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDEX_BUFFER));
+		CMDList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
+			MeshData->IndexBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, 
+			D3D12_RESOURCE_STATE_INDEX_BUFFER));
 
 		// Setup index buffer view
-		IndexBufferView.BufferLocation = IndexBuffer->GetGPUVirtualAddress();
-		IndexBufferView.SizeInBytes = IndexBufferSize;
-		IndexBufferView.Format = DXGI_FORMAT_R16_UINT;
+		MeshData->IndexBufferView.BufferLocation = MeshData->IndexBuffer->GetGPUVirtualAddress();
+		MeshData->IndexBufferView.SizeInBytes = IndexBufferSize;
+		MeshData->IndexBufferView.Format = DXGI_FORMAT_R16_UINT;
+
+		StaticMeshesData[MeshData->Name] = std::move(MeshData);
 	}
 
 	void FGameResource::AddMaterial(std::unique_ptr<FMaterialData> MaterialData)
@@ -126,7 +160,7 @@ namespace WoodenEngine
 			throw std::invalid_argument("Name must be not empty");
 		}
 
-		if (TexturesData.find(Name) != TexturesData.end())
+		if (TexturesData.find(Name) != TexturesData.cend())
 		{
 			throw std::invalid_argument("A texture with same name exists");
 		}
@@ -142,41 +176,62 @@ namespace WoodenEngine
 
 	void FGameResource::SetDevice(ComPtr<ID3D12Device> Device)
 	{
-		assert(Device != nullptr);
+		if (Device == nullptr)
+		{
+			throw std::invalid_argument("Device must be not nullptr");
+		}
+
 		this->Device = Device;
 	}
 
 	uint64 FGameResource::GetMaterialConstBufferIndex(const std::string& MaterialName) const
 	{
-		auto MaterialDataIt = MaterialsData.find(MaterialName);
-		if (MaterialDataIt == MaterialsData.end())
+		auto MaterialDataIter = MaterialsData.find(MaterialName);
+		if (MaterialDataIter == MaterialsData.cend())
 		{
 			throw std::invalid_argument("Hasn't found any material data with name - " + MaterialName);
 		}
-		return MaterialDataIt->second->iConstBuffer;
+		return MaterialDataIter->second->iConstBuffer;
 	}
 
 	FMaterialData* FGameResource::GetMaterialData(const std::string& MaterialName) const
 	{
-		auto MaterialDataIt = MaterialsData.find(MaterialName);
-		if (MaterialDataIt == MaterialsData.end())
+		auto MaterialDataIter = MaterialsData.find(MaterialName);
+		if (MaterialDataIter == MaterialsData.cend())
 		{
 			throw std::invalid_argument("Hasn't found any material data with name - " + MaterialName);
 		}
-		return MaterialDataIt->second.get();
+		return MaterialDataIter->second.get();
+	}
+
+	const FSubmeshData& FGameResource::GetSubmeshData(
+		const std::string& MeshName,
+		const std::string& SubmeshName) const
+	{
+		const auto& MeshData = GetMeshData(MeshName);
+
+		auto SubmeshDataIter = MeshData.SubmeshesData.find(SubmeshName);
+		if (SubmeshDataIter == MeshData.SubmeshesData.cend())
+		{
+			throw std::invalid_argument("Hasn't found any submesh data with name " + SubmeshName +
+				" in the mesh " + MeshName);
+		}
+
+		return *SubmeshDataIter->second;
 	}
 
 	const FMeshData& FGameResource::GetMeshData(const std::string& MeshName) const
 	{
-		auto MeshDataIt = StaticMeshesData.find(MeshName);
-		if (MeshDataIt == StaticMeshesData.end())
+		auto MeshDataIter = StaticMeshesData.find(MeshName);
+		if (MeshDataIter == StaticMeshesData.cend())
 		{
 			throw std::invalid_argument("Hasn't found any mesh data with name - " + MeshName);
 		}
-		return *MeshDataIt->second;
+
+		return *MeshDataIter->second;
 	}
 
-	default::uint64 FGameResource::GetNumMaterials() const noexcept
+	uint64 FGameResource::GetNumMaterials() const noexcept
 	{
 		return MaterialsData.size();
 	}
@@ -194,7 +249,7 @@ namespace WoodenEngine
 	const FTextureData* FGameResource::GetTextureData(const std::string& Name) const
 	{
 		auto TextureDataIter = TexturesData.find(Name);
-		if (TextureDataIter == TexturesData.end())
+		if (TextureDataIter == TexturesData.cend())
 		{
 			throw std::invalid_argument("Texture with name " + Name + " doesn't exist");
 		}
@@ -205,15 +260,5 @@ namespace WoodenEngine
 	const uint32 FGameResource::GetNumTexturesData() const noexcept
 	{
 		return TexturesData.size();
-	}
-
-	D3D12_VERTEX_BUFFER_VIEW FGameResource::GetVertexBufferView() const noexcept
-	{
-		return VertexBufferView;
-	}
-
-	D3D12_INDEX_BUFFER_VIEW FGameResource::GetIndexBufferView() const noexcept
-	{
-		return IndexBufferView;
 	}
 }
