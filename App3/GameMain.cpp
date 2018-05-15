@@ -201,6 +201,7 @@ namespace WoodenEngine
 		GameResources->LoadTexture(BasePath + L"water1.dds", "water", CMDList);
 		GameResources->LoadTexture(BasePath + L"grass.dds", "grass", CMDList);
 		GameResources->LoadTexture(BasePath + L"ice.dds", "glass", CMDList);
+		GameResources->LoadTexture(BasePath + L"white1x1.dds", "white1x1", CMDList);
 	}
 
 
@@ -256,6 +257,15 @@ namespace WoodenEngine
 		GlassMaterial->DiffuseAlbedo = { 1.0f, 1.0f, 1.0f, 0.4f };
 		GlassMaterial->DiffuseTexture = GameResources->GetTextureData("glass");
 		GameResources->AddMaterial(std::move(GlassMaterial));
+		++iConstBuffer;
+
+		auto ShadowMaterial = std::make_unique<FMaterialData>("shadow");
+		ShadowMaterial->iConstBuffer = iConstBuffer;
+		ShadowMaterial->FresnelR0 = { 0.001f, 0.001f, 0.001f};
+		ShadowMaterial->DiffuseAlbedo = { 0.0f, 0.0f, 0.0f, 0.6f };
+		ShadowMaterial->Roughness = 0.0f;
+		ShadowMaterial->DiffuseTexture = GameResources->GetTextureData("white1x1");
+		GameResources->AddMaterial(std::move(ShadowMaterial));
 		++iConstBuffer;
 	}
 
@@ -363,14 +373,17 @@ namespace WoodenEngine
 		RenderableObjects[(uint8)ERenderLayer::Opaque].push_back(PlatformObject.get());
 		Objects.push_back(std::move(PlatformObject));
 
-		MirrorPlane = XMVectorSet(0.0f, 0.0f, -1.0f, 0.0f);
-
 		auto MirrorObject = std::make_unique<WObject>(EnviromentMeshName, MirrorSubmeshName);
 		MirrorObject->SetPosition(-5.0f, 10.5f, -5.0f);
 		MirrorObject->SetWaterFactor(0);
 		MirrorObject->SetMaterial(GameResources->GetMaterialData("glass"));
 		MirrorObject->SetConstBufferIndex(iConstBuffer);
 		++iConstBuffer;
+
+		auto MirrorPlaneDirection = XMVectorSet(-0.0f, -0.0f, -1.0f, 1.0f);
+		auto MirrorDisplacement = XMVectorGetX(
+			XMVector3Dot(XMLoadFloat3(&MirrorObject->GetWorldPosition()), MirrorPlaneDirection));
+		MirrorPlane = XMVectorSet(0.0f, 0.0f, 1.0f, MirrorDisplacement);
 
 		RenderableObjects[(uint8)ERenderLayer::Mirrors].push_back(MirrorObject.get());
 		Objects.push_back(std::move(MirrorObject));
@@ -389,6 +402,7 @@ namespace WoodenEngine
 		SkullReflectedObject->SetMaterial(SkullObject->GetMaterial());
 		SkullReflectedObject->SetConstBufferIndex(++iConstBuffer);
 
+
 		auto ReflectTransform = XMMatrixReflect(MirrorPlane);
 		auto SkullWorldTransform = SkullObject->GetWorldTransform();
 		SkullReflectedObject->SetWorldTransform(SkullWorldTransform*ReflectTransform);
@@ -399,7 +413,6 @@ namespace WoodenEngine
 
 		RenderableObjects[(uint8)ERenderLayer::Reflected].push_back(SkullReflectedObject.get());
 		Objects.push_back(std::move(SkullReflectedObject));
-
 
 		auto CameraObject = std::make_unique<WCamera>(Window->Bounds.Width, Window->Bounds.Height);
 		Camera = CameraObject.get();

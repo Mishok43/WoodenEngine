@@ -251,6 +251,8 @@ namespace WoodenEngine
 		WCamera* Camera;
 
 		XMVECTOR MirrorPlane;
+		XMVECTOR ShadowPlane;
+
 
 		// DX12 Device
 		ComPtr<ID3D12Device> Device;
