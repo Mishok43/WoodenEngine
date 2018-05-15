@@ -19,6 +19,26 @@ namespace WoodenEngine
 	}
 
 
+	WObject::WObject(const WObject& Object)
+	{
+		// Doesn't copy iConstBuffer, bIsVisible, Texture and World Transform. Recomputes the last by itself
+
+		MeshName = Object.MeshName;
+		SubmeshName = Object.SubmeshName;
+		Position = Object.Position;
+		Rotation = Object.Rotation;
+		Scale = Object.Scale;
+		Color = Object.Color;
+
+		bIsUpdating = Object.bIsUpdating;
+		bIsRenderable = Object.bIsRenderable;
+		bIsEnabledInputEvents = Object.bIsEnabledInputEvents;
+		Material = Object.Material;
+		WaterFactor = Object.WaterFactor;
+
+		UpdateWorldTransform();
+	}
+
 	void WObject::Update(float Delta)
 	{
 		LifeTime += 0.16;

@@ -18,6 +18,9 @@ namespace WoodenEngine
 
 	class WObject;
 	class WCamera;
+	class WLightDirectional;
+	class WLightPoint;
+	class WLightSpot;
 
 	/*!
 	 * \class FGameMain
@@ -46,6 +49,7 @@ namespace WoodenEngine
 			AlphaTested,
 			Mirrors,
 			Reflected,
+			Shadow,
 			Count
 		};
 
@@ -146,6 +150,11 @@ namespace WoodenEngine
 		  */
 		void AddObjects();
 
+		/** @brief Adds lights 
+		  * @return (void)
+		  */
+		void AddLights();
+
 		/** @brief Loads materials
 		  * @return (void)
 		  */
@@ -226,13 +235,11 @@ namespace WoodenEngine
 		  * @return (void)
 		  */
 		void UpdateObjectsConstBuffer();
-		
-		/** @brief Updates reflection buffers of 
+
+
+		/** @brief Updates reflected frame's const buffers
 		  * @return (void)
 		  */
-		void UpdateReflectedObjectsConstBuffer();
-
-
 		void UpdateReflectedFrameConstBuffer();
 
 		/** @brief Updates const buffers of materials
@@ -240,10 +247,15 @@ namespace WoodenEngine
 		  */
 		void UpdateMaterialsConstBuffer();
 
-		/** @brief Updates cost buffer of current frame
+		/** @brief Updates const buffer of current frame
 		  * @return (void)
 		  */
 		void UpdateFrameConstBuffer();
+
+		/** @brief Updates shadow's transform
+		  * @return (void)
+		  */
+		void UpdateShadowTransform();
 
 		std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> GetStaticSamplers() const;
 
@@ -252,6 +264,11 @@ namespace WoodenEngine
 
 		XMVECTOR MirrorPlane;
 		XMVECTOR ShadowPlane;
+
+		const WLightPoint* CastShadowLight;
+
+		WObject* ShadowObject;
+		const WObject* CastShadowObject;
 
 
 		// DX12 Device
@@ -275,10 +292,13 @@ namespace WoodenEngine
 		// Array with all existing objects (renderable and not renderable)
 		std::vector<std::unique_ptr<WObject>> Objects;
 
+		std::vector<WLightDirectional*> LightsDirectional;
+		std::vector<WLightPoint*> LightsPoint;
+		std::vector<WLightSpot*> LightsSpot;
+
 		// Array with renderable objects. It's divided to several render layers. 
 		// See ERenderLayer
 		std::vector<WObject*> RenderableObjects[(uint8)ERenderLayer::Count];
-
 
 		std::unique_ptr<FGameResource> GameResources;
 		std::unique_ptr<FFrameResource> FramesResource[NMR_SWAP_BUFFERS];

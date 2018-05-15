@@ -6,6 +6,9 @@
 #include "Object.h"
 #include "Camera.h"
 #include "Common/DirectXHelper.h"
+#include "LightPoint.h"
+#include "LightDirectional.h"
+#include "LightSpot.h"
 #include "ShaderStructures.h"
 
 #define _DEBUG
@@ -187,6 +190,7 @@ namespace WoodenEngine
 	{
 		GameResources = std::make_unique<FGameResource>(Device);
 
+		AddLights();
 		AddTextures();
 		AddMaterials();
 		AddObjects();
@@ -262,7 +266,7 @@ namespace WoodenEngine
 		auto ShadowMaterial = std::make_unique<FMaterialData>("shadow");
 		ShadowMaterial->iConstBuffer = iConstBuffer;
 		ShadowMaterial->FresnelR0 = { 0.001f, 0.001f, 0.001f};
-		ShadowMaterial->DiffuseAlbedo = { 0.0f, 0.0f, 0.0f, 0.6f };
+		ShadowMaterial->DiffuseAlbedo = { 0.0f, 0.0f, 0.0f, 0.4f };
 		ShadowMaterial->Roughness = 0.0f;
 		ShadowMaterial->DiffuseTexture = GameResources->GetTextureData("white1x1");
 		GameResources->AddMaterial(std::move(ShadowMaterial));
@@ -370,6 +374,10 @@ namespace WoodenEngine
 		PlatformObject->SetMaterial(GameResources->GetMaterialData("grass"));
 		++iConstBuffer;
 
+		auto ShadowPlaneNormal = XMVectorSet(0.0f, 1.0f, 0.0f, 1.0f);
+		auto ShadowPlaneDisplacement = XMVectorGetX(
+			XMVector3Dot(XMLoadFloat3(&PlatformObject->GetWorldPosition()), ShadowPlaneNormal));
+		ShadowPlane = XMVectorSet(0.0f, 1.0f, 0.0f, -ShadowPlaneDisplacement);
 		RenderableObjects[(uint8)ERenderLayer::Opaque].push_back(PlatformObject.get());
 		Objects.push_back(std::move(PlatformObject));
 
@@ -397,16 +405,25 @@ namespace WoodenEngine
 		SkullObject->SetMaterial(GameResources->GetMaterialData("skull"));
 		++iConstBuffer;
 
-		auto SkullReflectedObject = std::make_unique<WObject>(SkullMeshName, SkullSubmeshName);
-		SkullReflectedObject->SetWaterFactor(0);
-		SkullReflectedObject->SetMaterial(SkullObject->GetMaterial());
-		SkullReflectedObject->SetConstBufferIndex(++iConstBuffer);
-
+		auto SkullReflectedObject = std::make_unique<WObject>(*SkullObject);
+		SkullReflectedObject->SetConstBufferIndex(iConstBuffer);
 
 		auto ReflectTransform = XMMatrixReflect(MirrorPlane);
 		auto SkullWorldTransform = SkullObject->GetWorldTransform();
 		SkullReflectedObject->SetWorldTransform(SkullWorldTransform*ReflectTransform);
 		++iConstBuffer;
+
+		auto SkullShadowObject = std::make_unique<WObject>(*SkullObject);
+		SkullShadowObject->SetConstBufferIndex(iConstBuffer);
+		SkullShadowObject->SetMaterial(GameResources->GetMaterialData("shadow"));
+		++iConstBuffer;
+
+
+		CastShadowObject = SkullObject.get();
+		ShadowObject = SkullShadowObject.get();
+
+		RenderableObjects[(uint8)ERenderLayer::Shadow].push_back(SkullShadowObject.get());
+		Objects.push_back(std::move(SkullShadowObject));
 
 		RenderableObjects[(uint8)ERenderLayer::Opaque].push_back(SkullObject.get());
 		Objects.push_back(std::move(SkullObject));
@@ -418,6 +435,34 @@ namespace WoodenEngine
 		Camera = CameraObject.get();
 
 		Objects.push_back(std::move(CameraObject));
+	}
+
+	void FGameMain::AddLights()
+	{
+		auto LeftFrontLight = std::make_unique<WLightDirectional>(
+			XMFLOAT3(0.6f, 0.6f, 0.6f), XMFLOAT3(0.57735f, -0.57735f, 0.57735f));
+		LightsDirectional.push_back(LeftFrontLight.get());
+		Objects.push_back(std::move(LeftFrontLight));
+
+		auto RightFrontLight = std::make_unique<WLightDirectional>(
+			XMFLOAT3(0.3f, 0.3f, 0.3f), XMFLOAT3(-0.57735f, 0.57735f, 0.57735f));
+		LightsDirectional.push_back(RightFrontLight.get());
+		Objects.push_back(std::move(RightFrontLight));
+
+		auto BackLight = std::make_unique<WLightDirectional>(
+			XMFLOAT3(0.15f, 0.15f, 0.15f), XMFLOAT3(0.0f, -0.707f, -0.707f));
+		LightsDirectional.push_back(BackLight.get());
+		Objects.push_back(std::move(BackLight));
+
+		auto TopPointLight = std::make_unique<WLightPoint>(
+			XMFLOAT3(0.8f, 0.0f, 0.0f), XMFLOAT3(0.0f, -1.0f, 0.0f),
+			XMFLOAT3(0.0f, 5.0f, 0.0f), 400, 500
+			);
+
+		CastShadowLight = TopPointLight.get();
+
+		LightsPoint.push_back(TopPointLight.get());
+		Objects.push_back(std::move(TopPointLight));
 	}
 
 	void FGameMain::InitDescriptorHeaps()
@@ -768,12 +813,39 @@ namespace WoodenEngine
 			&ReflectionsPSODesc,
 			IID_PPV_ARGS(&PipelineStates["reflections"])
 		));
+
+		D3D12_DEPTH_STENCIL_DESC ShadowDepthStencilDesc;
+		ShadowDepthStencilDesc.DepthEnable = true;
+		ShadowDepthStencilDesc.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
+		ShadowDepthStencilDesc.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+
+		ShadowDepthStencilDesc.StencilEnable = true;
+		ShadowDepthStencilDesc.StencilReadMask = 0xFF;
+		ShadowDepthStencilDesc.StencilWriteMask = 0xFF;
+
+		ShadowDepthStencilDesc.FrontFace.StencilFunc = D3D12_COMPARISON_FUNC_EQUAL;
+		ShadowDepthStencilDesc.FrontFace.StencilPassOp = D3D12_STENCIL_OP_INCR;
+		ShadowDepthStencilDesc.FrontFace.StencilFailOp = D3D12_STENCIL_OP_KEEP;
+		ShadowDepthStencilDesc.FrontFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
+
+		ShadowDepthStencilDesc.BackFace.StencilFunc = D3D12_COMPARISON_FUNC_EQUAL;
+		ShadowDepthStencilDesc.BackFace.StencilPassOp = D3D12_STENCIL_OP_INCR;
+		ShadowDepthStencilDesc.BackFace.StencilFailOp = D3D12_STENCIL_OP_KEEP;
+		ShadowDepthStencilDesc.BackFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
+
+
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC ShadowPSODesc = TransparentPSODesc;
+		ShadowPSODesc.DepthStencilState = ShadowDepthStencilDesc;
+
+		DX::ThrowIfFailed(Device->CreateGraphicsPipelineState(
+			&ShadowPSODesc,
+			IID_PPV_ARGS(&PipelineStates["shadow"])
+		));
+
 	}
 
 	void WoodenEngine::FGameMain::Update(float dtime)
 	{
-		AnimateWaterMaterial();
-
 		for(auto iObject=0; iObject < Objects.size(); ++iObject)
 		{
 			auto Object = Objects[iObject].get();
@@ -782,6 +854,9 @@ namespace WoodenEngine
 				Object->Update(dtime);
 			}
 		}
+
+		AnimateWaterMaterial();
+		UpdateShadowTransform();
 
 		GameTime += 0.016f;
 
@@ -826,6 +901,17 @@ namespace WoodenEngine
 		WaterMaterial->Transform(3, 1) = TexV;
 
 		WaterMaterial->NumDirtyConstBuffers = NMR_SWAP_BUFFERS;
+	}
+
+	void WoodenEngine::FGameMain::UpdateShadowTransform()
+	{
+		auto WorldTransform = CastShadowObject->GetWorldTransform();
+		auto LightPosition = LightsDirectional[0]->GetShaderData().Direction;
+
+		auto ShadowTransform = XMMatrixShadow(ShadowPlane, -XMLoadFloat3(&LightPosition));
+
+		auto LiftUpTransform = XMMatrixTranslation(0.0f,  0.5f+0.001f, 0.0f);
+		ShadowObject->SetWorldTransform(WorldTransform*ShadowTransform*LiftUpTransform);
 	}
 
 	void WoodenEngine::FGameMain::UpdateObjectsConstBuffer()
@@ -899,20 +985,21 @@ namespace WoodenEngine
 		FrameConstData.CameraPosition = Camera->GetWorldPosition();
 		FrameConstData.GameTime = GameTime;
 
-		FrameConstData.Lights[0].Direction = { 0.57735f, -0.57735f, 0.57735f };
-		FrameConstData.Lights[0].Strength = { 0.6f, 0.6f, 0.6f };
+		uint8 iLight = 0;
+		for (auto i = 0; i < LightsDirectional.size(); ++i, ++iLight)
+		{
+			FrameConstData.Lights[iLight] = LightsDirectional[i]->GetShaderData();
+		}
 
-		FrameConstData.Lights[1].Direction = { -0.57735f, -0.57735f, 0.57735f };
-		FrameConstData.Lights[1].Strength = { 0.3f, 0.3f, 0.3f };
+		for (auto i = 0; i < LightsPoint.size(); ++i, ++iLight)
+		{
+			FrameConstData.Lights[iLight] = LightsPoint[i]->GetShaderData();
+		}
 
-		FrameConstData.Lights[2].Direction = { 0.0f, -0.707f, -0.707f };
-		FrameConstData.Lights[2].Strength = { 0.15f, 0.15f, 0.15f };
-
-		FrameConstData.Lights[3].Direction = { 0.0f, -1.0f, 0.0f};
-		FrameConstData.Lights[3].Strength = { 0.8f, 0.0f, 0.0f };
-		FrameConstData.Lights[3].Position = { 0.0f, 5.0f, 0.0f };
-		FrameConstData.Lights[3].FalloffStart = 400;
-		FrameConstData.Lights[3].FalloffEnd = 500;
+		for (auto i = 0; i < LightsSpot.size(); ++i, ++iLight)
+		{
+			FrameConstData.Lights[iLight] = LightsSpot[i]->GetShaderData();
+		}
 
 		CurrFrameResource->FrameDataBuffer->CopyData(0, FrameConstData);
 	}
@@ -933,6 +1020,7 @@ namespace WoodenEngine
 
 		CurrFrameResource->FrameDataBuffer->CopyData(1, ReflectedFrameConstBuffer);
 	}
+
 	
 	void WoodenEngine::FGameMain::InputMouseMoved(const float dx, const float dy) noexcept
 	{
@@ -1019,6 +1107,9 @@ namespace WoodenEngine
 		CMDList->SetPipelineState(PipelineStates["alphatest"].Get());
 		RenderObjects(ERenderLayer::AlphaTested, CMDList);
 		
+		CMDList->SetPipelineState(PipelineStates["shadow"].Get());
+		RenderObjects(ERenderLayer::Shadow, CMDList);
+
 		CMDList->SetPipelineState(PipelineStates["transparent"].Get());
 		RenderObjects(ERenderLayer::Transparent, CMDList);
 		RenderObjects(ERenderLayer::Mirrors, CMDList);

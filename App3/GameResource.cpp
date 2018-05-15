@@ -170,6 +170,7 @@ namespace WoodenEngine
 			Texture->Resource, Texture->UploadResource));
 
 		Texture->Name = Name;
+		Texture->FileName = FileName;
 
 		TexturesData[Texture->Name] = std::move(Texture);
 	}

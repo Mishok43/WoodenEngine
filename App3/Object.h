@@ -24,7 +24,6 @@ namespace WoodenEngine
 			WObject()=default;
 			virtual ~WObject()=default;
 
-			WObject(const WObject& Obj) = delete;
 			WObject(WObject&& Obj) = delete;
 			WObject& operator=(const WObject& Obj) = delete;
 			
@@ -42,6 +41,8 @@ namespace WoodenEngine
 				const XMFLOAT3& Position = { 0.0f, 0.0f, 0.0f },
 				const XMFLOAT3& Rotation = { 0.0f, 0.0f, 0.0f },
 				const XMFLOAT3& Scale = { 1.0f, 1.0f, 1.0f });
+
+			WObject(const WObject& Object);
 			
 			/** @brief Update function for executing object's login
 			  * @warning bIsUpdating must be true!

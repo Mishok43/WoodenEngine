@@ -6,7 +6,7 @@ namespace WoodenEngine
 {
 
 	using namespace DirectX;
-
+	
 	struct SLightData
 	{
 		// Light color

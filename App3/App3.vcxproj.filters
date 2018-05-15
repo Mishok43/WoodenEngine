@@ -54,6 +54,10 @@
       <Filter>Common</Filter>
     </ClCompile>
     <ClCompile Include="GameResource.cpp" />
+    <ClCompile Include="Light.cpp" />
+    <ClCompile Include="LightPoint.cpp" />
+    <ClCompile Include="LightSpot.cpp" />
+    <ClCompile Include="LightDirectional.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="App.h" />
@@ -72,6 +76,10 @@
     </ClInclude>
     <ClInclude Include="GameResource.h" />
     <ClInclude Include="TextureData.h" />
+    <ClInclude Include="Light.h" />
+    <ClInclude Include="LightPoint.h" />
+    <ClInclude Include="LightSpot.h" />
+    <ClInclude Include="LightDirectional.h" />
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest" />
