@@ -19,7 +19,6 @@ namespace WoodenEngine
 	public:
 		WLightPoint(
 			XMFLOAT3 Strength,
-			XMFLOAT3 Direction,
 			XMFLOAT3 Position,
 			float FalloffStart,
 			float FalloffEnd
@@ -33,12 +32,6 @@ namespace WoodenEngine
 		  */
 		void SetStrength(XMFLOAT3 Strength);
 
-		/** @brief Sets light's direction
-		  * @param Direction (XMFLOAT3)
-		  * @return (void)
-		  */
-		void SetDirection(XMFLOAT3 Direction);
-
 		/** @brief Sets attenuation
 		  * @param Start Distance from source (it) for starting attenuation (float)
 		  * @param End Distance from source (it) for ending attenuation (float)
@@ -51,8 +44,6 @@ namespace WoodenEngine
 		// Light color/strength
 		XMFLOAT3 Strength;
 
-		// Direction of light raycing
-		XMFLOAT3 Direction;
 
 		// Distance from source (it) for starting attenuation
 		float FalloffStart = 0.0f;

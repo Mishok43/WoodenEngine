@@ -226,6 +226,11 @@ namespace WoodenEngine
 		return Position;
 	}
 
+	XMFLOAT3 WObject::GetWorldRotation() const noexcept
+	{
+		return Rotation;
+	}
+
 	bool WObject::IsUpdating() const noexcept
 	{
 		return bIsUpdating;

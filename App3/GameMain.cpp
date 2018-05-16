@@ -223,12 +223,31 @@ namespace WoodenEngine
 		GameResources->AddMaterial(std::move(WaterMaterial));
 		++iConstBuffer;
 
-		auto dinoMaterial = std::make_unique<FMaterialData>("dino");
-		dinoMaterial->iConstBuffer = iConstBuffer;
-		dinoMaterial->FresnelR0 = { 0.05f, 0.05f, 0.05f };
-		dinoMaterial->Roughness = 0.4f;
-		dinoMaterial->DiffuseTexture = GameResources->GetTextureData("white1x1");
-		GameResources->AddMaterial(std::move(dinoMaterial));
+		auto DinoMaterial1 = std::make_unique<FMaterialData>("dino1");
+		DinoMaterial1->DiffuseAlbedo = { 0.8f, 0.8f, 0.8f, 1.0f };
+		DinoMaterial1->iConstBuffer = iConstBuffer;
+		DinoMaterial1->FresnelR0 = { 0.1f, 0.1f, 0.1f };
+		DinoMaterial1->Roughness = 0.95f;
+		DinoMaterial1->DiffuseTexture = GameResources->GetTextureData("white1x1");
+		GameResources->AddMaterial(std::move(DinoMaterial1));
+		++iConstBuffer;
+
+		auto DinoMaterial2 = std::make_unique<FMaterialData>("dino2");
+		DinoMaterial2->iConstBuffer = iConstBuffer;
+		DinoMaterial2->DiffuseAlbedo = { 0.8f, 0.8f, 0.8f, 1.0f };
+		DinoMaterial2->FresnelR0 = { 0.1f, 0.1f, 0.1f };
+		DinoMaterial2->Roughness = 0.01f;
+		DinoMaterial2->DiffuseTexture = GameResources->GetTextureData("white1x1");
+		GameResources->AddMaterial(std::move(DinoMaterial2));
+		++iConstBuffer;
+
+		auto DinoMaterial3 = std::make_unique<FMaterialData>("dino3");
+		DinoMaterial3->iConstBuffer = iConstBuffer;
+		DinoMaterial3->DiffuseAlbedo = { 0.8f, 0.8f, 0.8f, 1.0f };
+		DinoMaterial3->FresnelR0 = { 0.9f, 0.9f, 0.9f };
+		DinoMaterial3->Roughness = 0.01f;
+		DinoMaterial3->DiffuseTexture = GameResources->GetTextureData("white1x1");
+		GameResources->AddMaterial(std::move(DinoMaterial3));
 		++iConstBuffer;
 
 		auto CrateMaterial = std::make_unique<FMaterialData>("crate");
@@ -259,10 +278,28 @@ namespace WoodenEngine
 		auto ShadowMaterial = std::make_unique<FMaterialData>("shadow");
 		ShadowMaterial->iConstBuffer = iConstBuffer;
 		ShadowMaterial->FresnelR0 = { 0.001f, 0.001f, 0.001f};
-		ShadowMaterial->DiffuseAlbedo = { 0.0f, 0.0f, 0.0f, 0.5f };
+		ShadowMaterial->DiffuseAlbedo = { 0.0f, 0.0f, 0.0f, 0.3f };
 		ShadowMaterial->Roughness = 1.0f;
 		ShadowMaterial->DiffuseTexture = GameResources->GetTextureData("white1x1");
 		GameResources->AddMaterial(std::move(ShadowMaterial));
+		++iConstBuffer;
+
+		auto RedMaterial = std::make_unique<FMaterialData>("red");
+		RedMaterial->iConstBuffer = iConstBuffer;
+		RedMaterial->FresnelR0 = { 1.00f, 1.00f, 1.00f };
+		RedMaterial->DiffuseAlbedo = { 1.0f, 0.0f, 0.0f, 1.0f };
+		RedMaterial->Roughness =0.0f;
+		RedMaterial->DiffuseTexture = GameResources->GetTextureData("white1x1");
+		GameResources->AddMaterial(std::move(RedMaterial));
+		++iConstBuffer;
+
+		auto GreenMaterial = std::make_unique<FMaterialData>("green");
+		GreenMaterial->iConstBuffer = iConstBuffer;
+		GreenMaterial->FresnelR0 = { 1.00f, 1.00f, 1.00f };
+		GreenMaterial->DiffuseAlbedo = { 0.0f, 1.0f, 1.0f, 1.0f };
+		GreenMaterial->Roughness = 0.0f;
+		GreenMaterial->DiffuseTexture = GameResources->GetTextureData("white1x1");
+		GameResources->AddMaterial(std::move(GreenMaterial));
 		++iConstBuffer;
 	}
 
@@ -356,8 +393,8 @@ namespace WoodenEngine
 		Objects.push_back(std::move(SphereObject));
 	
 		auto PlatformObject = std::make_unique<WObject>(GeoMeshName, BoxSubmeshName);
-		PlatformObject->SetPosition(-25.0f, 8.0f, -15.0f);
-		PlatformObject->SetScale(20.0f, 1.0f, 20.0f);
+		PlatformObject->SetPosition(-20.0f, 3.5f, 0.0f);
+		PlatformObject->SetScale(25.0f, 1.0f, 30.0f);
 		PlatformObject->SetWaterFactor(0);
 		PlatformObject->SetMaterial(GameResources->GetMaterialData("grass"));
 
@@ -370,7 +407,7 @@ namespace WoodenEngine
 		Objects.push_back(std::move(PlatformObject));
 
 		auto MirrorObject = std::make_unique<WObject>(EnviromentMeshName, MirrorSubmeshName);
-		MirrorObject->SetPosition(-25.0f, 10.5f, -15.0f);
+		MirrorObject->SetPosition(-20.0f, 6.0f, 0.0f);
 		MirrorObject->SetWaterFactor(0);
 		MirrorObject->SetMaterial(GameResources->GetMaterialData("glass"));
 
@@ -383,11 +420,11 @@ namespace WoodenEngine
 		Objects.push_back(std::move(MirrorObject));
 
 		auto DinoObject = std::make_unique<WObject>(DinoMeshName, RobotSubmeshName);
-		DinoObject->SetPosition(-25.0f, 8.5f, -23.0f);
+		DinoObject->SetPosition(-20.0f, 4.0f, 10.0f);
 		DinoObject->SetRotation(0, XM_PI, 0);
 		DinoObject->SetScale(0.5f, 0.5f, 0.5f);
 		DinoObject->SetWaterFactor(0);
-		DinoObject->SetMaterial(GameResources->GetMaterialData("dino"));
+		DinoObject->SetMaterial(GameResources->GetMaterialData("dino1"));
 
 		auto DinoReflectedObject = std::make_unique<WObject>(*DinoObject);
 
@@ -400,6 +437,7 @@ namespace WoodenEngine
 
 		this->DinoObject = DinoObject.get();
 		this->DinoShadowObject = DinoShadowObject.get();
+		this->DinoReflectedObject = DinoReflectedObject.get();
 
 		AddObjectToScene(ERenderLayer::Shadow, DinoShadowObject.get());
 		Objects.push_back(std::move(DinoShadowObject));
@@ -435,22 +473,22 @@ namespace WoodenEngine
 
 
 		auto DinoLight = std::make_unique<WFloatingLightPoint>(
-			XMFLOAT3(0.8f, 0.0f, 0.0f), XMFLOAT3(0.0f, -1.0f, 0.0f),
-			XMFLOAT3( 0.0f, 0.0f, 0.0f), 10.0f, 20.0f 
+			XMFLOAT3(0.8f, 0.0f, 0.0f), XMFLOAT3( 0.0f, 0.0f, 0.0f), 
+			10.0f, 20.0f 
 		);
 
 		auto DinoPosition = DinoObject->GetWorldPosition();
 
 
 		DinoLight->SetTrajectory(
-			{ DinoPosition.x - 6.0f, DinoPosition.y + 8.0f, DinoPosition.z - 3.5f },
-			{ DinoPosition.x + 8.0f, DinoPosition.y + 8.0f, DinoPosition.z - 3.5f },
+			{ DinoPosition.x - 6.0f, DinoPosition.y + 8.0f, DinoPosition.z + 3.5f },
+			{ DinoPosition.x + 8.0f, DinoPosition.y + 8.0f, DinoPosition.z + 3.5f },
 			5.0f, true
 		);
 
 		DinoLight->SetIsRenderable(true);
 		DinoLight->SetMesh("geo", "sphere");
-		DinoLight->SetMaterial(GameResources->GetMaterialData("dino"));
+		DinoLight->SetMaterial(GameResources->GetMaterialData("red"));
 		DinoLight->SetScale(0.2f, 0.2f, 0.2f);
 
 		CastShadowLight = DinoLight.get();
@@ -458,6 +496,18 @@ namespace WoodenEngine
 		AddObjectToScene(ERenderLayer::Opaque, DinoLight.get());
 		LightsPoint.push_back(DinoLight.get());
 		Objects.push_back(std::move(DinoLight));
+
+		auto SpotLight = std::make_unique<WLightSpot>(
+			XMFLOAT3(0.0f, 1.0f, 1.0f), XMFLOAT3(0.0f, -1.0f, 0.0f), 
+			XMFLOAT3(5.0f, 10.0f, 5.0f), 50.0f, 100.0f, 200.0f);
+
+		SpotLight->SetIsRenderable(true);
+		SpotLight->SetMesh("geo", "sphere");
+		SpotLight->SetMaterial(GameResources->GetMaterialData("green"));
+		SpotLight->SetScale(0.4f, 0.4f, 0.4f);
+		AddObjectToScene(ERenderLayer::Opaque, SpotLight.get());
+		LightsSpot.push_back(SpotLight.get());
+		Objects.push_back(std::move(SpotLight));
 	}
 
 	void FGameMain::InitDescriptorHeaps()
@@ -863,8 +913,7 @@ namespace WoodenEngine
 			}
 		}
 
-		AnimateWaterMaterial();
-		UpdateShadowTransform();
+		UpdateDemoLogic();
 
 		GameTime += dtime;
 
@@ -876,9 +925,27 @@ namespace WoodenEngine
 		WaitForGPU(CurrFrameResource->Fence);
 
 		UpdateObjectsConstBuffer();
-		UpdateReflectedFrameConstBuffer();
 		UpdateMaterialsConstBuffer();
 		UpdateFrameConstBuffer();
+		UpdateReflectedFrameConstBuffer();
+	}
+
+	void FGameMain::UpdateReflectionTransform()
+	{
+		auto ReflectTransform = XMMatrixReflect(MirrorPlane);
+		auto DinoWorldTransform = DinoObject->GetWorldTransform();
+		DinoReflectedObject->SetWorldTransform(DinoWorldTransform*ReflectTransform);
+	}
+
+	void FGameMain::UpdateDemoLogic()
+	{
+		auto DinoRotation = DinoObject->GetWorldRotation();
+		DinoRotation.y += XM_2PI / 10.0f*0.016f;
+		DinoObject->SetRotation(DinoRotation);
+
+		AnimateWaterMaterial();
+		UpdateShadowTransform();
+		UpdateReflectionTransform();
 	}
 
 	void FGameMain::AnimateWaterMaterial()
@@ -1019,7 +1086,9 @@ namespace WoodenEngine
 	{
 		auto ReflectedFrameConstBuffer = FrameConstData;
 
-		XMMATRIX ReflectionMatrix = XMMatrixReflect(MirrorPlane);
+		auto ReflectionPointMatrix = XMMatrixReflect(MirrorPlane);
+		auto Displacement = XMVectorSet(0.0f, 0.0f, 0.0f, XMVectorGetW(MirrorPlane));
+		auto ReflectionDirMatrix = XMMatrixReflect(MirrorPlane- Displacement);
 
 		uint8 iLight = 0;
 		for (auto i = 0; i < LightsDirectional.size(); ++i, ++iLight)
@@ -1027,7 +1096,7 @@ namespace WoodenEngine
 			auto& LightData = ReflectedFrameConstBuffer.Lights[iLight];
 			
 			auto Direction = XMLoadFloat3(&LightData.Direction);
-			XMStoreFloat3(&LightData.Direction, XMVector3Transform(Direction, ReflectionMatrix));
+			XMStoreFloat3(&LightData.Direction, XMVector3Transform(Direction, ReflectionDirMatrix));
 		}
 
 		for (auto i = 0; i < LightsPoint.size(); ++i, ++iLight)
@@ -1035,12 +1104,18 @@ namespace WoodenEngine
 			auto& LightData = ReflectedFrameConstBuffer.Lights[iLight];
 
 			auto Position = XMLoadFloat3(&LightData.Position);
-			XMStoreFloat3(&LightData.Position, XMVector3Transform(Position, ReflectionMatrix));
+			XMStoreFloat3(&LightData.Position, XMVector3Transform(Position, ReflectionPointMatrix));
 		}
 
 		for (auto i = 0; i < LightsSpot.size(); ++i, ++iLight)
 		{
-			ReflectedFrameConstBuffer.Lights[iLight] = LightsSpot[i]->GetShaderData();
+			auto& LightData = ReflectedFrameConstBuffer.Lights[iLight];
+
+			auto Position = XMLoadFloat3(&LightData.Position);
+			XMStoreFloat3(&LightData.Position, XMVector3Transform(Position, ReflectionPointMatrix));
+
+			auto Direction = XMLoadFloat3(&LightData.Direction);
+			XMStoreFloat3(&LightData.Direction, XMVector3Transform(Direction, ReflectionDirMatrix));
 		}
 
 		CurrFrameResource->FrameDataBuffer->CopyData(1, ReflectedFrameConstBuffer);
@@ -1068,6 +1143,22 @@ namespace WoodenEngine
 			{
 				Object->InputKeyPressed(key);
 			}
+		}
+
+		if (key == '1')
+		{
+			DinoObject->SetMaterial(GameResources->GetMaterialData("dino1"));
+			DinoObject->SetNumDirtyConstBuffers(NMR_SWAP_BUFFERS);
+		}
+		else if(key == '2')
+		{
+			DinoObject->SetMaterial(GameResources->GetMaterialData("dino2"));
+			DinoObject->SetNumDirtyConstBuffers(NMR_SWAP_BUFFERS);
+		}
+		else if (key == '3')
+		{
+			DinoObject->SetMaterial(GameResources->GetMaterialData("dino3"));
+			DinoObject->SetNumDirtyConstBuffers(NMR_SWAP_BUFFERS);
 		}
 	}
 

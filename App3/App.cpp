@@ -241,6 +241,15 @@ void WoodenEngine::App::OnKeyPressed(Windows::UI::Core::CoreWindow^ coreWindow, 
 	case Windows::System::VirtualKey::S:
 		key = 's';
 		break;
+	case Windows::System::VirtualKey::Number1:
+		key = '1';
+		break;
+	case Windows::System::VirtualKey::Number2:
+		key = '2';
+		break;
+	case Windows::System::VirtualKey::Number3:
+		key = '3';
+		break;
 	default:
 		return;
 	}

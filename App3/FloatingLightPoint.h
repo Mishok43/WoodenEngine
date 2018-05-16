@@ -10,7 +10,6 @@ namespace WoodenEngine
 	public:
 		WFloatingLightPoint(
 			XMFLOAT3 Strength,
-			XMFLOAT3 Direction,
 			XMFLOAT3 Position,
 			float FalloffStart,
 			float FalloffEnd

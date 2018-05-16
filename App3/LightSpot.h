@@ -53,6 +53,7 @@ namespace WoodenEngine
 
 		virtual SLightData GetShaderData() const noexcept override;
 	private:
+
 		// Light color/strength
 		XMFLOAT3 Strength;
 

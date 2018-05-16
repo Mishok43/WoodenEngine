@@ -196,6 +196,11 @@ namespace WoodenEngine
 			  */
 			XMFLOAT3 GetWorldPosition() const noexcept;
 
+			/** @brief Returns object's world absolute rotation
+			  * @return (DirectX::XMFLOAT3)
+			  */
+			XMFLOAT3 GetWorldRotation() const noexcept;
+
 			/** @brief Returns index in const buffer
 			  * @return Get index in const buffer (default::uint16)
 			  */

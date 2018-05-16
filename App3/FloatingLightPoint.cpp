@@ -9,12 +9,11 @@ namespace WoodenEngine
 
 	WFloatingLightPoint::WFloatingLightPoint(
 		XMFLOAT3 Strength,
-		XMFLOAT3 Direction,
 		XMFLOAT3 Position,
 		float FalloffStart,
 		float FalloffEnd) :
 		WLightPoint(
-			Strength, Direction, Position,
+			Strength, Position,
 			FalloffStart, FalloffEnd)
 	{
 		bIsUpdating = true;

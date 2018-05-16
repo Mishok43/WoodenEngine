@@ -265,6 +265,16 @@ namespace WoodenEngine
 		  */
 		void UpdateShadowTransform();
 
+		/** @brief Updates reflection's transform
+		  * @return (void)
+		  */
+		void UpdateReflectionTransform();
+
+		/** @brief Updates demo logic
+		* @return (void)
+		*/
+		void UpdateDemoLogic();
+
 		std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> GetStaticSamplers() const;
 
 		// Current view camera
@@ -275,8 +285,9 @@ namespace WoodenEngine
 
 		const WLightPoint* CastShadowLight;
 
+		WObject* DinoReflectedObject;
 		WObject* DinoShadowObject;
-		const WObject* DinoObject;
+		WObject* DinoObject;
 
 		// DX12 Device
 		ComPtr<ID3D12Device> Device;
