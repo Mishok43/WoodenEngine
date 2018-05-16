@@ -9,7 +9,9 @@
 #include "LightPoint.h"
 #include "LightDirectional.h"
 #include "LightSpot.h"
+#include "FloatingLightPoint.h"
 #include "ShaderStructures.h"
+
 
 #define _DEBUG
 
@@ -79,7 +81,8 @@ namespace WoodenEngine
 	{
 		for (uint8 iFrame = 0; iFrame < NMR_SWAP_BUFFERS; ++iFrame)
 		{
-			FramesResource[iFrame] = std::make_unique<FFrameResource>(Device, Objects.size(), GameResources->GetNumMaterials());
+			FramesResource[iFrame] = std::make_unique<FFrameResource>(
+				Device, NumRenderableObjectsConstBuffers, GameResources->GetNumMaterials());
 		}
 	}
 
@@ -174,28 +177,18 @@ namespace WoodenEngine
 		DX::ThrowIfFailed(Device->CreateFence(FenceValue, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&Fence)));
 
 		fenceEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
-
-		D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS multisampleData = {};
-		multisampleData.Format = BufferFormat;
-		multisampleData.SampleCount = 4;
-		multisampleData.Flags = D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE;
-
-		DX::ThrowIfFailed(Device->CheckFeatureSupport(
-			D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS,
-			(void*)&multisampleData,
-			sizeof(multisampleData)));
 	}
 
 	void FGameMain::InitGameResources()
 	{
 		GameResources = std::make_unique<FGameResource>(Device);
 
-		AddLights();
 		AddTextures();
 		AddMaterials();
 		AddObjects();
+		AddLights();
 	}
-
+	
 	void FGameMain::AddTextures()
 	{
 		auto BasePath = static_cast<std::wstring>(L"Assets\\Textures\\");
@@ -230,12 +223,12 @@ namespace WoodenEngine
 		GameResources->AddMaterial(std::move(WaterMaterial));
 		++iConstBuffer;
 
-		auto SkullMaterial = std::make_unique<FMaterialData>("skull");
-		SkullMaterial->iConstBuffer = iConstBuffer;
-		SkullMaterial->FresnelR0 = { 0.05f, 0.05f, 0.05f };
-		SkullMaterial->Roughness = 0.4f;
-		SkullMaterial->DiffuseTexture = GameResources->GetTextureData("grass");
-		GameResources->AddMaterial(std::move(SkullMaterial));
+		auto dinoMaterial = std::make_unique<FMaterialData>("dino");
+		dinoMaterial->iConstBuffer = iConstBuffer;
+		dinoMaterial->FresnelR0 = { 0.05f, 0.05f, 0.05f };
+		dinoMaterial->Roughness = 0.4f;
+		dinoMaterial->DiffuseTexture = GameResources->GetTextureData("white1x1");
+		GameResources->AddMaterial(std::move(dinoMaterial));
 		++iConstBuffer;
 
 		auto CrateMaterial = std::make_unique<FMaterialData>("crate");
@@ -266,8 +259,8 @@ namespace WoodenEngine
 		auto ShadowMaterial = std::make_unique<FMaterialData>("shadow");
 		ShadowMaterial->iConstBuffer = iConstBuffer;
 		ShadowMaterial->FresnelR0 = { 0.001f, 0.001f, 0.001f};
-		ShadowMaterial->DiffuseAlbedo = { 0.0f, 0.0f, 0.0f, 0.4f };
-		ShadowMaterial->Roughness = 0.0f;
+		ShadowMaterial->DiffuseAlbedo = { 0.0f, 0.0f, 0.0f, 0.5f };
+		ShadowMaterial->Roughness = 1.0f;
 		ShadowMaterial->DiffuseTexture = GameResources->GetTextureData("white1x1");
 		GameResources->AddMaterial(std::move(ShadowMaterial));
 		++iConstBuffer;
@@ -290,15 +283,19 @@ namespace WoodenEngine
 		auto SphereMesh = MeshGenerator->CreateSphere(1.0f, 15.0f, 15.0f);
 
 		auto MeshParser = std::make_unique<FMeshParser>();
-		auto SkullMesh = MeshParser->ParseTxtData("Assets\\Models\\skull.txt");
-		SkullMesh->Name = "skull";
+		//auto dinoMesh = MeshParser->ParseTxtData("Assets\\Models\\dino.txt");
+		//dinoMesh->Name = "dino";
+
+		auto DinoMesh = MeshParser->ParseObjFile("Assets\\Models\\robot.obj");
+		DinoMesh->Name = "robot";
 
 		const auto BoxSubmeshName = BoxMesh->Name;
 		const auto SphereSubmeshName = SphereMesh->Name;
-		const auto SkullSubmeshName = SkullMesh->Name;
+		//const auto dinoSubmeshName = dinoMesh->Name;
 		const auto PlaneSubmeshName = PlaneMesh->Name;
 		const auto LandscapeSubmeshName = LandscapeMesh->Name;
 		const auto MirrorSubmeshName = MirrorMesh->Name;
+		const auto RobotSubmeshName = DinoMesh->Name;
 
 		const std::string& GeoMeshName = "geo";
 		std::vector<std::unique_ptr<FMeshRawData>> GeometricSubmeshes;
@@ -313,10 +310,10 @@ namespace WoodenEngine
 		EnviromentSubmeshes.push_back(std::move(MirrorMesh));
 		GameResources->LoadStaticMesh(std::move(EnviromentSubmeshes), EnviromentMeshName, CMDList);
 
-		const std::string& SkullMeshName = "skull";
-		std::vector<std::unique_ptr<FMeshRawData>> SkullSubmeshes;
-		SkullSubmeshes.push_back(std::move(SkullMesh));
-		GameResources->LoadStaticMesh(std::move(SkullSubmeshes), SkullMeshName, CMDList);
+		const std::string& DinoMeshName = "dino";
+		std::vector<std::unique_ptr<FMeshRawData>> DinoSubmeshes;
+		DinoSubmeshes.push_back(std::move(DinoMesh));
+		GameResources->LoadStaticMesh(std::move(DinoSubmeshes), DinoMeshName, CMDList);
 
 		uint8 iConstBuffer = 0;
 
@@ -325,12 +322,10 @@ namespace WoodenEngine
 		XMStoreFloat4x4(&LandscapeTextureTransform, XMMatrixScaling(6.0f, 6.0f, 1.0f));
 		LandscapeObject->SetTextureTransform(std::move(LandscapeTextureTransform));
 		LandscapeObject->SetPosition(0, -2, 0);
-		LandscapeObject->SetConstBufferIndex(iConstBuffer);
 		LandscapeObject->SetWaterFactor(0);
 		LandscapeObject->SetMaterial(GameResources->GetMaterialData("grass"));
-		++iConstBuffer;
-
-		RenderableObjects[(uint8)ERenderLayer::Opaque].push_back(LandscapeObject.get());
+		
+		AddObjectToScene(ERenderLayer::Opaque, LandscapeObject.get());
 		Objects.push_back(std::move(LandscapeObject));
 
 		auto WaterObject = std::make_unique<WObject>(EnviromentMeshName, PlaneSubmeshName);
@@ -338,98 +333,82 @@ namespace WoodenEngine
 		XMStoreFloat4x4(&TextureTransform, XMMatrixScaling(5.0f, 5.0f, 1.0f));
 		WaterObject->SetTextureTransform(std::move(TextureTransform));
 		WaterObject->SetPosition(0, 0, 0);
-		WaterObject->SetConstBufferIndex(iConstBuffer);
 		WaterObject->SetMaterial(GameResources->GetMaterialData("water"));
-		++iConstBuffer;
 
-		RenderableObjects[(uint8)ERenderLayer::Transparent].push_back(WaterObject.get());
+		AddObjectToScene(ERenderLayer::Transparent, WaterObject.get());
 		Objects.push_back(std::move(WaterObject));
 
 		// Create objects
 		auto BoxObject = std::make_unique<WObject>(GeoMeshName, BoxSubmeshName);
-		BoxObject->SetConstBufferIndex(iConstBuffer);
 		BoxObject->SetPosition(1.5f, 0.2f, 0.0f);
 		BoxObject->SetWaterFactor(1.0);
 		BoxObject->SetMaterial(GameResources->GetMaterialData("wirefence"));
-		++iConstBuffer;
 
-		RenderableObjects[(uint8)ERenderLayer::AlphaTested].push_back(BoxObject.get());
+		AddObjectToScene(ERenderLayer::AlphaTested, BoxObject.get());
 		Objects.push_back(std::move(BoxObject));
 
 		auto SphereObject = std::make_unique<WObject>(GeoMeshName, SphereSubmeshName);
-		SphereObject->SetConstBufferIndex(iConstBuffer);
 		SphereObject->SetPosition(-2.5f, -0.2f, 2.0f);
 		SphereObject->SetWaterFactor(-1.0);
 		SphereObject->SetMaterial(GameResources->GetMaterialData("crate"));
-		++iConstBuffer;
 
-		RenderableObjects[(uint8)ERenderLayer::Opaque].push_back(SphereObject.get());
+		AddObjectToScene(ERenderLayer::Opaque, SphereObject.get());
 		Objects.push_back(std::move(SphereObject));
 	
 		auto PlatformObject = std::make_unique<WObject>(GeoMeshName, BoxSubmeshName);
-		PlatformObject->SetPosition(-5.0f, 8.0f, -5.0f);
-		PlatformObject->SetScale(10.0f, 1.0f, 10.0f);
+		PlatformObject->SetPosition(-25.0f, 8.0f, -15.0f);
+		PlatformObject->SetScale(20.0f, 1.0f, 20.0f);
 		PlatformObject->SetWaterFactor(0);
-		PlatformObject->SetConstBufferIndex(iConstBuffer);
 		PlatformObject->SetMaterial(GameResources->GetMaterialData("grass"));
-		++iConstBuffer;
 
 		auto ShadowPlaneNormal = XMVectorSet(0.0f, 1.0f, 0.0f, 1.0f);
 		auto ShadowPlaneDisplacement = XMVectorGetX(
 			XMVector3Dot(XMLoadFloat3(&PlatformObject->GetWorldPosition()), ShadowPlaneNormal));
 		ShadowPlane = XMVectorSet(0.0f, 1.0f, 0.0f, -ShadowPlaneDisplacement);
-		RenderableObjects[(uint8)ERenderLayer::Opaque].push_back(PlatformObject.get());
+
+		AddObjectToScene(ERenderLayer::Opaque, PlatformObject.get());
 		Objects.push_back(std::move(PlatformObject));
 
 		auto MirrorObject = std::make_unique<WObject>(EnviromentMeshName, MirrorSubmeshName);
-		MirrorObject->SetPosition(-5.0f, 10.5f, -5.0f);
+		MirrorObject->SetPosition(-25.0f, 10.5f, -15.0f);
 		MirrorObject->SetWaterFactor(0);
 		MirrorObject->SetMaterial(GameResources->GetMaterialData("glass"));
-		MirrorObject->SetConstBufferIndex(iConstBuffer);
-		++iConstBuffer;
 
 		auto MirrorPlaneDirection = XMVectorSet(-0.0f, -0.0f, -1.0f, 1.0f);
 		auto MirrorDisplacement = XMVectorGetX(
 			XMVector3Dot(XMLoadFloat3(&MirrorObject->GetWorldPosition()), MirrorPlaneDirection));
 		MirrorPlane = XMVectorSet(0.0f, 0.0f, 1.0f, MirrorDisplacement);
 
-		RenderableObjects[(uint8)ERenderLayer::Mirrors].push_back(MirrorObject.get());
+		AddObjectToScene(ERenderLayer::Mirrors, MirrorObject.get());
 		Objects.push_back(std::move(MirrorObject));
 
-		auto SkullObject = std::make_unique<WObject>(SkullMeshName, SkullSubmeshName);
-		SkullObject->SetConstBufferIndex(iConstBuffer);
-		SkullObject->SetPosition(-6.0f, 9.0f, -8.5f);
-		SkullObject->SetRotation(0, XM_PI, 0);
-		SkullObject->SetScale(0.5f, 0.5f, 0.5f);
-		SkullObject->SetWaterFactor(0);
-		SkullObject->SetMaterial(GameResources->GetMaterialData("skull"));
-		++iConstBuffer;
+		auto DinoObject = std::make_unique<WObject>(DinoMeshName, RobotSubmeshName);
+		DinoObject->SetPosition(-25.0f, 8.5f, -23.0f);
+		DinoObject->SetRotation(0, XM_PI, 0);
+		DinoObject->SetScale(0.5f, 0.5f, 0.5f);
+		DinoObject->SetWaterFactor(0);
+		DinoObject->SetMaterial(GameResources->GetMaterialData("dino"));
 
-		auto SkullReflectedObject = std::make_unique<WObject>(*SkullObject);
-		SkullReflectedObject->SetConstBufferIndex(iConstBuffer);
+		auto DinoReflectedObject = std::make_unique<WObject>(*DinoObject);
 
 		auto ReflectTransform = XMMatrixReflect(MirrorPlane);
-		auto SkullWorldTransform = SkullObject->GetWorldTransform();
-		SkullReflectedObject->SetWorldTransform(SkullWorldTransform*ReflectTransform);
-		++iConstBuffer;
+		auto DinoWorldTransform = DinoObject->GetWorldTransform();
+		DinoReflectedObject->SetWorldTransform(DinoWorldTransform*ReflectTransform);
 
-		auto SkullShadowObject = std::make_unique<WObject>(*SkullObject);
-		SkullShadowObject->SetConstBufferIndex(iConstBuffer);
-		SkullShadowObject->SetMaterial(GameResources->GetMaterialData("shadow"));
-		++iConstBuffer;
+		auto DinoShadowObject = std::make_unique<WObject>(*DinoObject);
+		DinoShadowObject->SetMaterial(GameResources->GetMaterialData("shadow"));
 
+		this->DinoObject = DinoObject.get();
+		this->DinoShadowObject = DinoShadowObject.get();
 
-		CastShadowObject = SkullObject.get();
-		ShadowObject = SkullShadowObject.get();
+		AddObjectToScene(ERenderLayer::Shadow, DinoShadowObject.get());
+		Objects.push_back(std::move(DinoShadowObject));
 
-		RenderableObjects[(uint8)ERenderLayer::Shadow].push_back(SkullShadowObject.get());
-		Objects.push_back(std::move(SkullShadowObject));
+		AddObjectToScene(ERenderLayer::CastShadow, DinoObject.get());
+		Objects.push_back(std::move(DinoObject));
 
-		RenderableObjects[(uint8)ERenderLayer::Opaque].push_back(SkullObject.get());
-		Objects.push_back(std::move(SkullObject));
-
-		RenderableObjects[(uint8)ERenderLayer::Reflected].push_back(SkullReflectedObject.get());
-		Objects.push_back(std::move(SkullReflectedObject));
+		AddObjectToScene(ERenderLayer::Reflected, DinoReflectedObject.get());
+		Objects.push_back(std::move(DinoReflectedObject));
 
 		auto CameraObject = std::make_unique<WCamera>(Window->Bounds.Width, Window->Bounds.Height);
 		Camera = CameraObject.get();
@@ -454,15 +433,31 @@ namespace WoodenEngine
 		LightsDirectional.push_back(BackLight.get());
 		Objects.push_back(std::move(BackLight));
 
-		auto TopPointLight = std::make_unique<WLightPoint>(
+
+		auto DinoLight = std::make_unique<WFloatingLightPoint>(
 			XMFLOAT3(0.8f, 0.0f, 0.0f), XMFLOAT3(0.0f, -1.0f, 0.0f),
-			XMFLOAT3(0.0f, 5.0f, 0.0f), 400, 500
-			);
+			XMFLOAT3( 0.0f, 0.0f, 0.0f), 10.0f, 20.0f 
+		);
 
-		CastShadowLight = TopPointLight.get();
+		auto DinoPosition = DinoObject->GetWorldPosition();
 
-		LightsPoint.push_back(TopPointLight.get());
-		Objects.push_back(std::move(TopPointLight));
+
+		DinoLight->SetTrajectory(
+			{ DinoPosition.x - 6.0f, DinoPosition.y + 8.0f, DinoPosition.z - 3.5f },
+			{ DinoPosition.x + 8.0f, DinoPosition.y + 8.0f, DinoPosition.z - 3.5f },
+			5.0f, true
+		);
+
+		DinoLight->SetIsRenderable(true);
+		DinoLight->SetMesh("geo", "sphere");
+		DinoLight->SetMaterial(GameResources->GetMaterialData("dino"));
+		DinoLight->SetScale(0.2f, 0.2f, 0.2f);
+
+		CastShadowLight = DinoLight.get();
+
+		AddObjectToScene(ERenderLayer::Opaque, DinoLight.get());
+		LightsPoint.push_back(DinoLight.get());
+		Objects.push_back(std::move(DinoLight));
 	}
 
 	void FGameMain::InitDescriptorHeaps()
@@ -557,6 +552,7 @@ namespace WoodenEngine
 		const D3D_SHADER_MACRO OpaqueShaderDefines[] =
 		{
 			"FOG", "1",
+			"LIGHTING", "1",
 			NULL, NULL
 		};
 
@@ -564,12 +560,19 @@ namespace WoodenEngine
 		{
 			"FOG", "1",
 			"ALPHA_TEST", "1",
+			"LIGHTING", "1",
+			NULL, NULL
+		};
+
+		const D3D_SHADER_MACRO ShadowShaderDefines[] = {
+			"FOG", "1",
 			NULL, NULL
 		};
 
 		Shaders["standartVS"] = DX::CompileShader(L"Shaders\\Shader.hlsl", nullptr, "VS", "vs_5_0");
 		Shaders["opaquePS"] = DX::CompileShader(L"Shaders\\Shader.hlsl", OpaqueShaderDefines, "PS", "ps_5_0");
 		Shaders["alphatestPS"] = DX::CompileShader(L"Shaders\\Shader.hlsl", AlphaTestShaderDefines, "PS", "ps_5_0");
+		Shaders["shadowPS"] = DX::CompileShader(L"Shaders\\Shader.hlsl", ShadowShaderDefines, "PS", "ps_5_0");
 	}
 
 	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> FGameMain::GetStaticSamplers() const
@@ -836,7 +839,10 @@ namespace WoodenEngine
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC ShadowPSODesc = TransparentPSODesc;
 		ShadowPSODesc.DepthStencilState = ShadowDepthStencilDesc;
-
+		ShadowPSODesc.PS = {
+			Shaders["shadowPS"]->GetBufferPointer(),
+			Shaders["shadowPS"]->GetBufferSize()
+		};
 		DX::ThrowIfFailed(Device->CreateGraphicsPipelineState(
 			&ShadowPSODesc,
 			IID_PPV_ARGS(&PipelineStates["shadow"])
@@ -846,6 +852,8 @@ namespace WoodenEngine
 
 	void WoodenEngine::FGameMain::Update(float dtime)
 	{
+		dtime = 0.016f;
+
 		for(auto iObject=0; iObject < Objects.size(); ++iObject)
 		{
 			auto Object = Objects[iObject].get();
@@ -858,7 +866,7 @@ namespace WoodenEngine
 		AnimateWaterMaterial();
 		UpdateShadowTransform();
 
-		GameTime += 0.016f;
+		GameTime += dtime;
 
 		// Shift frame to the next
 		iCurrFrameResource = (iCurrFrameResource + 1) % NMR_SWAP_BUFFERS;
@@ -905,13 +913,16 @@ namespace WoodenEngine
 
 	void WoodenEngine::FGameMain::UpdateShadowTransform()
 	{
-		auto WorldTransform = CastShadowObject->GetWorldTransform();
-		auto LightPosition = LightsDirectional[0]->GetShaderData().Direction;
+		auto WorldTransform = DinoObject->GetWorldTransform();
+		auto LightPosition = CastShadowLight->GetWorldPosition();
+		auto LightPositionH = XMFLOAT4(LightPosition.x, LightPosition.y, LightPosition.z, 1.0f);
 
-		auto ShadowTransform = XMMatrixShadow(ShadowPlane, -XMLoadFloat3(&LightPosition));
+		auto ShadowTransform = XMMatrixShadow(ShadowPlane, XMLoadFloat4(&LightPositionH));
 
 		auto LiftUpTransform = XMMatrixTranslation(0.0f,  0.5f+0.001f, 0.0f);
-		ShadowObject->SetWorldTransform(WorldTransform*ShadowTransform*LiftUpTransform);
+		DinoShadowObject->SetWorldTransform(WorldTransform*ShadowTransform*LiftUpTransform);
+
+		DinoShadowObject->SetNumDirtyConstBuffers(NMR_SWAP_BUFFERS);
 	}
 
 	void WoodenEngine::FGameMain::UpdateObjectsConstBuffer()
@@ -1010,12 +1021,26 @@ namespace WoodenEngine
 
 		XMMATRIX ReflectionMatrix = XMMatrixReflect(MirrorPlane);
 
-		for (auto i = 0; i < 4; ++i)
+		uint8 iLight = 0;
+		for (auto i = 0; i < LightsDirectional.size(); ++i, ++iLight)
 		{
-			auto LightDirection = XMLoadFloat3(&ReflectedFrameConstBuffer.Lights[i].Direction);
+			auto& LightData = ReflectedFrameConstBuffer.Lights[iLight];
+			
+			auto Direction = XMLoadFloat3(&LightData.Direction);
+			XMStoreFloat3(&LightData.Direction, XMVector3Transform(Direction, ReflectionMatrix));
+		}
 
-			XMStoreFloat3(&ReflectedFrameConstBuffer.Lights[i].Direction,
-				XMVector3TransformNormal(std::move(LightDirection), ReflectionMatrix));
+		for (auto i = 0; i < LightsPoint.size(); ++i, ++iLight)
+		{
+			auto& LightData = ReflectedFrameConstBuffer.Lights[iLight];
+
+			auto Position = XMLoadFloat3(&LightData.Position);
+			XMStoreFloat3(&LightData.Position, XMVector3Transform(Position, ReflectionMatrix));
+		}
+
+		for (auto i = 0; i < LightsSpot.size(); ++i, ++iLight)
+		{
+			ReflectedFrameConstBuffer.Lights[iLight] = LightsSpot[i]->GetShaderData();
 		}
 
 		CurrFrameResource->FrameDataBuffer->CopyData(1, ReflectedFrameConstBuffer);
@@ -1107,8 +1132,14 @@ namespace WoodenEngine
 		CMDList->SetPipelineState(PipelineStates["alphatest"].Get());
 		RenderObjects(ERenderLayer::AlphaTested, CMDList);
 		
+		CMDList->ClearDepthStencilView(DSVDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),  D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
+
+
 		CMDList->SetPipelineState(PipelineStates["shadow"].Get());
 		RenderObjects(ERenderLayer::Shadow, CMDList);
+
+		CMDList->SetPipelineState(PipelineStates["opaque"].Get());
+		RenderObjects(ERenderLayer::CastShadow, CMDList);
 
 		CMDList->SetPipelineState(PipelineStates["transparent"].Get());
 		RenderObjects(ERenderLayer::Transparent, CMDList);
@@ -1130,6 +1161,14 @@ namespace WoodenEngine
 		++FenceValue;
 		CurrFrameResource->Fence = FenceValue;
 		CmdQueue->Signal(Fence.Get(), FenceValue);
+	}
+
+	void FGameMain::AddObjectToScene(ERenderLayer RenderLayer, WObject* Object)
+	{
+		Object->SetConstBufferIndex(NumRenderableObjectsConstBuffers);
+		RenderableObjects[(uint8)RenderLayer].push_back(Object);
+
+		++NumRenderableObjectsConstBuffers;
 	}
 
 	void FGameMain::RenderObjects(ERenderLayer RenderLayer, ComPtr<ID3D12GraphicsCommandList> CMDList)

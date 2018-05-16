@@ -11,10 +11,11 @@ namespace WoodenEngine
 	struct FVertex{
 		FVertex() = default;
 
+
 		FVertex(
 			const DirectX::XMFLOAT3& Position,
-			const DirectX::XMFLOAT3& Normal,
-			const DirectX::XMFLOAT3& Tangent,
+			const DirectX::XMFLOAT3& Normal = { 0.0f, 0.0f, 0.0f },
+			const DirectX::XMFLOAT3& Tangent = { 0.0f, 0.0f, 0.0f },
 			const DirectX::XMFLOAT2& UV = { 0.0f, 0.0f }) :
 			Position(Position),
 			Normal(Normal),

@@ -54,7 +54,7 @@ namespace WoodenEngine
 		XMFLOAT4 FogColor = { 0.5f, 0.5f, 0.5f, 0.0f };
 
 		// Distance from camera to fog start
-		float FogStart = 4;
+		float FogStart = 20;
 
 		// Distance from fog start to fog end
 		float FogRange = 100;

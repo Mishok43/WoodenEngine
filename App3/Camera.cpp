@@ -19,9 +19,9 @@ namespace WoodenEngine
 	{
 		WObject::Update(Delta);
 
-		bool UpdateView = false;
+		auto UpdateView = false;
 
-		float WalkSpeed = 5.0 / 60.0f;
+		auto WalkSpeed = 10.0f / 60.0f;
 		if (bMoveForward)
 		{
 			WalkForward(WalkSpeed);

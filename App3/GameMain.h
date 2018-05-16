@@ -49,6 +49,7 @@ namespace WoodenEngine
 			AlphaTested,
 			Mirrors,
 			Reflected,
+			CastShadow,
 			Shadow,
 			Count
 		};
@@ -91,6 +92,13 @@ namespace WoodenEngine
 		  * @return (void)
 		  */
 		void Render();
+
+		/** @brief Adds object to scene for rendering
+		  * @param RenderLayer Render layer of object(ERenderLayer)
+		  * @param Object (WObject *)
+		  * @return (void)
+		  */
+		void AddObjectToScene(ERenderLayer RenderLayer, WObject* Object);
 
 		/** @brief Renders list of objects
 		  * @param RenderableObjects List of renderable objects(const std::vector<WObject * > &)
@@ -267,9 +275,8 @@ namespace WoodenEngine
 
 		const WLightPoint* CastShadowLight;
 
-		WObject* ShadowObject;
-		const WObject* CastShadowObject;
-
+		WObject* DinoShadowObject;
+		const WObject* DinoObject;
 
 		// DX12 Device
 		ComPtr<ID3D12Device> Device;
@@ -282,7 +289,7 @@ namespace WoodenEngine
 
 		// Index of current back buffer
 		uint8 iCurrBackBuffer = 0;
-		
+
 		// Index of current frame resource
 		uint8 iCurrFrameResource = 0;
 
@@ -299,6 +306,10 @@ namespace WoodenEngine
 		// Array with renderable objects. It's divided to several render layers. 
 		// See ERenderLayer
 		std::vector<WObject*> RenderableObjects[(uint8)ERenderLayer::Count];
+
+		// Number const buffers for renderable objects
+		uint8 NumRenderableObjectsConstBuffers = 0;
+
 
 		std::unique_ptr<FGameResource> GameResources;
 		std::unique_ptr<FFrameResource> FramesResource[NMR_SWAP_BUFFERS];

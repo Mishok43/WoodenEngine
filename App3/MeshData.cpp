@@ -2,8 +2,12 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <assimp/Importer.hpp>
+#include <assimp/scene.h>
+#include <assimp/postprocess.h>
 
 #include "MeshData.h"
+
 
 namespace WoodenEngine
 {
@@ -107,7 +111,7 @@ namespace WoodenEngine
 		uint32 NumVSubdivisions,
 		uint32 NumHSubdivisions) const noexcept
 	{
-		auto SphereMeshData = std::make_unique<FMeshRawData>("Sphere");
+		auto SphereMeshData = std::make_unique<FMeshRawData>("sphere");
 		SphereMeshData->Vertices.resize(2 + (NumVSubdivisions - 1)*(NumHSubdivisions + 1));
 		SphereMeshData->Indices.resize(NumHSubdivisions*NumVSubdivisions * 2 * 3);
 
@@ -382,6 +386,76 @@ namespace WoodenEngine
 		}
 
 		File.close();
+		return MeshData;
+	}
+
+	std::unique_ptr<FMeshRawData> FMeshParser::ParseObjFile(const std::string& FilePath) const
+	{
+		Assimp::Importer Importer;
+
+		const auto* Scene = Importer.ReadFile(FilePath,
+			aiProcess_Triangulate |
+			aiProcess_ConvertToLeftHanded);
+
+		if (Scene == nullptr)
+		{
+			throw std::invalid_argument("The file " + FilePath + " can't be opened");
+		}
+
+		auto* RootNode = (aiMesh*)(Scene->mMeshes[0]);
+
+		auto MeshData = std::make_unique<FMeshRawData>();
+		MeshData->Name = RootNode->mName.C_Str();
+		MeshData->Vertices.resize(RootNode->mNumVertices);
+
+		for (auto iVertex = 0; iVertex < RootNode->mNumVertices; ++iVertex)
+		{
+			XMFLOAT3 Position = { 
+				RootNode->mVertices[iVertex].x,
+				RootNode->mVertices[iVertex].y, 
+				RootNode->mVertices[iVertex].z 
+			};
+
+			FVertex Vertex = { std::move(Position) };
+
+			if (RootNode->mNormals != nullptr)
+			{
+				Vertex.Normal = {
+					RootNode->mNormals[iVertex].x,
+					RootNode->mNormals[iVertex].y,
+					RootNode->mNormals[iVertex].z,
+				};
+			}
+
+			if (RootNode->mTangents != nullptr)
+			{
+				Vertex.Tangent = {
+					RootNode->mTangents[iVertex].x,
+					RootNode->mTangents[iVertex].y,
+					RootNode->mTangents[iVertex].z,
+				};
+			}
+
+			if (RootNode->mTextureCoords[0] != nullptr)
+			{
+				Vertex.TexC = {
+					RootNode->mTextureCoords[0][iVertex].x,
+					RootNode->mTextureCoords[0][iVertex].y,
+				};
+			}
+
+			MeshData->Vertices[iVertex] = std::move(Vertex);
+		}
+
+		for (auto iFace = 0; iFace < RootNode->mNumFaces; ++iFace)
+		{
+			auto Face = RootNode->mFaces[iFace];
+			for (auto iIndex = 0; iIndex < Face.mNumIndices; ++iIndex)
+			{
+				MeshData->Indices.push_back(Face.mIndices[iIndex]);
+			}
+		}
+
 		return MeshData;
 	}
 }

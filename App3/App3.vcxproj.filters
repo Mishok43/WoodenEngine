@@ -58,6 +58,7 @@
     <ClCompile Include="LightPoint.cpp" />
     <ClCompile Include="LightSpot.cpp" />
     <ClCompile Include="LightDirectional.cpp" />
+    <ClCompile Include="FloatingLightPoint.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="App.h" />
@@ -80,6 +81,7 @@
     <ClInclude Include="LightPoint.h" />
     <ClInclude Include="LightSpot.h" />
     <ClInclude Include="LightDirectional.h" />
+    <ClInclude Include="FloatingLightPoint.h" />
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest" />

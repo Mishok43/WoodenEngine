@@ -1,3 +1,9 @@
+//***************************************************************************************
+// color.hlsl by Frank Luna (C) 2015 All Rights Reserved.
+//
+// Transforms and colors geometry.
+//***************************************************************************************
+
 // Number of direction lights
 
 #ifndef NUM_DIR_LIGHTS
@@ -124,7 +130,7 @@ VertexOut VS(VertexIn vin)
     {
         float sint = sin(cbTime / 15.0f);
 		vin.PosL.y = sin(vin.PosL.x + vin.PosL.z) * sint*0.5f;
-        vin.NormalL = float3(-sint * cos(vin.PosL.x), 1, -sint * cos(vin.PosL.z));
+		vin.NormalL = float3(-sint * 0.5f*cos(vin.PosL.x), 1, -sint * 0.5f*cos(vin.PosL.z));
         vin.NormalL = normalize(vin.NormalL);
     }
     else

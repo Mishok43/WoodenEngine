@@ -124,6 +124,22 @@ namespace WoodenEngine
 		this->Material = Material;
 	}
 
+	void WObject::SetMesh(std::string MeshName, std::string SubmeshName) noexcept
+	{
+		if (MeshName.empty())
+		{
+			throw std::length_error("Mesh name must be not empty");
+		}
+
+		if (SubmeshName.empty())
+		{
+			throw std::length_error("Submesh name must be not empty");
+		}
+
+		this->MeshName = MeshName;
+		this->SubmeshName = SubmeshName;
+	}
+
 	void WObject::SetWorldTransform(const XMMATRIX& WorldTransform) noexcept
 	{
 		this->WorldTransform = WorldTransform;

@@ -94,7 +94,14 @@ namespace WoodenEngine
 			  */
 			void SetMaterial(const FMaterialData* Material);
 
-			
+
+			/** @brief Sets mesh
+			  * @param MeshName Mesh name (std::string)
+			  * @param SubmeshName Submesh name which is included in that mesh (std::string)
+			  * @return (void)
+			  */
+			void SetMesh(std::string MeshName, std::string SubmeshName) noexcept;
+
 			/** @brief Sets world's transform
 			  * @warning Be careful, call it only if it's necessary
 			  * @param WorldTransform (const XMMATRIX &)
@@ -303,7 +310,7 @@ namespace WoodenEngine
 			// Number not updated const buffers
 			uint8 NumDirtyConstBuffers = NMR_SWAP_BUFFERS;
 
-			int WaterFactor = 1;
+			int WaterFactor = 0;
 
 			/** @brief Recomputes the world matrix considering Position, Rotation and Scale in the world
 			  * @return (void)

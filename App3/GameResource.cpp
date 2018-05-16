@@ -52,23 +52,24 @@ namespace WoodenEngine
 			NumIndices += MeshData->Indices.size();
 		}
 
-		MeshData->VerticesData.reserve(NumVertices);
+		MeshData->VerticesData.resize(NumVertices);
 		MeshData->IndicesData.reserve(NumIndices);
 		
 		auto VertexDataIter = MeshData->VerticesData.cend();
 		auto IndexDataIter = MeshData->IndicesData.cend();
 
+		auto NumFilledVertices = 0;
 		// Adding vertices and indices of every mesh to common arrays
 		for (auto iMesh = 0; iMesh < SubmeshesData.size(); ++iMesh)
 		{
 			auto SubmeshRawData = SubmeshesData[iMesh].get();
 			
 			auto SubmeshData = std::make_unique<FSubmeshData>(SubmeshRawData->Name);
-			SubmeshData->VertexBegin = MeshData->VerticesData.size();
+			SubmeshData->VertexBegin = NumFilledVertices;
 			SubmeshData->IndexBegin = MeshData->IndicesData.size();
 			SubmeshData->NumIndices = SubmeshRawData->Indices.size();
 
-			const auto VertexDataNewSize = MeshData->VerticesData.size() + SubmeshRawData->Vertices.size();
+			const auto VertexDataNewSize = NumFilledVertices + SubmeshRawData->Vertices.size();
 
 			for (auto i = SubmeshData->VertexBegin; i < VertexDataNewSize; i++)
 			{
@@ -80,11 +81,11 @@ namespace WoodenEngine
 					SubmeshRawData->Vertices[iVertex].TexC 
 				};
 
-				VertexDataIter =  MeshData->VerticesData.insert(VertexDataIter, std::move(Vertex));
-				VertexDataIter++;
+				MeshData->VerticesData[i] = std::move(Vertex);
 			}
 
-			
+			NumFilledVertices += SubmeshRawData->Vertices.size();
+
 			const auto IndexDataNewSize = MeshData->IndicesData.size() + SubmeshRawData->Indices.size();
 			
 			for (auto i = SubmeshData->IndexBegin; i < IndexDataNewSize; i++)
