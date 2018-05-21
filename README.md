@@ -6,5 +6,5 @@ Technologies:
 DirectX 12, C++14, WinUniversal
 
 Demo:
-https://www.youtube.com/watch?v=et5s8k4SOvg
+https://www.youtube.com/watch?v=zZzk-y_vu6I
 
