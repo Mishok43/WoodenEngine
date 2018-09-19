@@ -76,6 +76,7 @@ namespace WoodenEngine
 	* \author devmi
 	* \date April 2018
 	*/
+	
 	struct FMeshRawData
 	{
 		FMeshRawData() = default;
@@ -146,9 +147,6 @@ namespace WoodenEngine
 		ComPtr<ID3D12Resource> IndexUploadBuffer;
 
 		D3D12_INDEX_BUFFER_VIEW IndexBufferView;
-
-		std::vector<SVertexData> VerticesData;
-		std::vector<uint16> IndicesData;
 		
 		std::unordered_map<std::string, std::unique_ptr<FSubmeshData>> SubmeshesData;
 	};
@@ -197,6 +195,15 @@ namespace WoodenEngine
 			uint32 NumHSubdivisions
 		) const noexcept;
 
+		/** @brief Generates a geosphere with regular triangles
+		  * @param Radius of geosphere (float)
+		  * @param NumSubdivision (uint16_t)
+		  * @return (std::unique_ptr<WoodenEngine::FMeshRawData>)
+		  */
+		std::unique_ptr<FMeshRawData> CreateGeoSphere(
+			float Radius,
+			uint16_t NumSubdivision
+		) const noexcept;
 
 		/** @brief Generates a grid NumVSubdivions*NumHSubdivisions 
 		  * @param Width Object's width (float)

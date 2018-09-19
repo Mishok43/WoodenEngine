@@ -16,6 +16,7 @@ namespace WoodenEngine
 {
 	using namespace DirectX;
 
+	struct FBillboardVertex;
 	class WObject;
 	class WCamera;
 	class WLightDirectional;
@@ -51,6 +52,8 @@ namespace WoodenEngine
 			Reflected,
 			CastShadow,
 			Shadow,
+			Billboard,
+			Geosphere,
 			Count
 		};
 
@@ -119,6 +122,7 @@ namespace WoodenEngine
 			ERenderLayer RenderLayer,
 			ComPtr<ID3D12GraphicsCommandList> CMDList
 		);
+
 
 		/** @brief Init dx12 device and other components
 		  * @param outputWindow (Windows::UI::Core::CoreWindow ^)
@@ -306,7 +310,7 @@ namespace WoodenEngine
 
 		// Current frame resource
 		FFrameResource* CurrFrameResource;
-
+		
 		// Array with all existing objects (renderable and not renderable)
 		std::vector<std::unique_ptr<WObject>> Objects;
 
@@ -320,7 +324,6 @@ namespace WoodenEngine
 
 		// Number const buffers for renderable objects
 		uint8 NumRenderableObjectsConstBuffers = 0;
-
 
 		std::unique_ptr<FGameResource> GameResources;
 		std::unique_ptr<FFrameResource> FramesResource[NMR_SWAP_BUFFERS];
@@ -353,6 +356,8 @@ namespace WoodenEngine
 		ComPtr<ID3D12Fence> Fence;
 		UINT64 FenceValue = 0;
 		HANDLE fenceEvent;
+		
+		uint32 MsaaQualityLevels;
 
 		// Cached reference to the output window
 		Platform::Agile<Windows::UI::Core::CoreWindow> Window;

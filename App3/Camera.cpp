@@ -9,10 +9,14 @@ namespace WoodenEngine
 		WindowWidth(WindowWidth),
 		WindowHeight(WindowHeight)
 	{
+		SetPosition(-6, 30, 10);
+		LookRight(XM_PI);
+		LookUp(XM_PIDIV4);
+
 		bIsRenderable = false;
 		bIsEnabledInputEvents = true;
 
-		UpdateViewMatrix();
+		UpdateViewTransform();
 	}
 
 	void WCamera::Update(float Delta)
@@ -45,11 +49,11 @@ namespace WoodenEngine
 
 		if (UpdateView)
 		{
-			UpdateViewMatrix();
+			UpdateViewTransform();
 		}
 	}
 
-	void WCamera::UpdateViewMatrix() noexcept
+	void WCamera::UpdateViewTransform() noexcept
 	{
 		XMVECTOR F = XMLoadFloat3(&Forward);
 		XMVECTOR U = XMLoadFloat3(&Up);
@@ -135,11 +139,11 @@ namespace WoodenEngine
 		const auto dTheta = dy / WindowHeight*DirectX::XM_PIDIV2;
 
 		LookUp(dTheta);
-		UpdateViewMatrix();
+		UpdateViewTransform();
 
 		LookRight(dPhi);
 		
-		UpdateViewMatrix();
+		UpdateViewTransform();
 	}
 
 	void WCamera::InputKeyPressed(char key) noexcept

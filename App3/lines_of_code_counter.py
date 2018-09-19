@@ -32,6 +32,8 @@ filesToCheck = []
 for root, _, files in os.walk(currentDir):
     for f in files:
         fullpath = os.path.join(root, f)
+        if fullpath.find("assimp") != -1:
+            continue
         if '.git' not in fullpath:
             for extension in acceptableFileExtensions:
             	if fullpath.endswith(extension):

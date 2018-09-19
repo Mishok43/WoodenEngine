@@ -97,6 +97,6 @@ namespace WoodenEngine
 		/** @brief Recomputes view matrix based on XAngle, ZAngle, ViewRadius for rendering
 		  * @return (void)
 		  */
-		void UpdateViewMatrix() noexcept;
+		void UpdateViewTransform() noexcept;
 	};
 }

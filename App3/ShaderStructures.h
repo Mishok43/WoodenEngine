@@ -51,8 +51,8 @@ namespace WoodenEngine
 		XMFLOAT4 AmbientLight = { 0.35f, 0.35f, 0.35f, 1.0f };
 
 		// Fog color
-		XMFLOAT4 FogColor = { 0.5f, 0.5f, 0.5f, 0.0f };
 
+		XMFLOAT4 FogColor = { 0.5f, 0.5f, 0.5f, 0.0f };
 		// Distance from camera to fog start
 		float FogStart = 20;
 
@@ -100,5 +100,11 @@ namespace WoodenEngine
 
 		// UV-Coordinates
 		XMFLOAT2 TexC;
+	};
+
+	struct SVertexBillboardData 
+	{
+		XMFLOAT3 Position;
+		XMFLOAT2 Size;
 	};
 }

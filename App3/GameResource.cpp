@@ -52,11 +52,15 @@ namespace WoodenEngine
 			NumIndices += MeshData->Indices.size();
 		}
 
-		MeshData->VerticesData.resize(NumVertices);
-		MeshData->IndicesData.reserve(NumIndices);
+
+		std::vector<SVertexData> VerticesData;
+		std::vector<uint16> IndicesData;
+
+		VerticesData.resize(NumVertices);
+		IndicesData.reserve(NumIndices);
 		
-		auto VertexDataIter = MeshData->VerticesData.cend();
-		auto IndexDataIter = MeshData->IndicesData.cend();
+		auto VertexDataIter = VerticesData.cend();
+		auto IndexDataIter = IndicesData.cend();
 
 		auto NumFilledVertices = 0;
 		// Adding vertices and indices of every mesh to common arrays
@@ -66,7 +70,7 @@ namespace WoodenEngine
 			
 			auto SubmeshData = std::make_unique<FSubmeshData>(SubmeshRawData->Name);
 			SubmeshData->VertexBegin = NumFilledVertices;
-			SubmeshData->IndexBegin = MeshData->IndicesData.size();
+			SubmeshData->IndexBegin = IndicesData.size();
 			SubmeshData->NumIndices = SubmeshRawData->Indices.size();
 
 			const auto VertexDataNewSize = NumFilledVertices + SubmeshRawData->Vertices.size();
@@ -81,18 +85,18 @@ namespace WoodenEngine
 					SubmeshRawData->Vertices[iVertex].TexC 
 				};
 
-				MeshData->VerticesData[i] = std::move(Vertex);
+				VerticesData[i] = std::move(Vertex);
 			}
 
 			NumFilledVertices += SubmeshRawData->Vertices.size();
 
-			const auto IndexDataNewSize = MeshData->IndicesData.size() + SubmeshRawData->Indices.size();
+			const auto IndexDataNewSize = IndicesData.size() + SubmeshRawData->Indices.size();
 			
 			for (auto i = SubmeshData->IndexBegin; i < IndexDataNewSize; i++)
 			{
 				auto Index = SubmeshRawData->Indices[i - SubmeshData->IndexBegin];
 				
-				IndexDataIter = MeshData->IndicesData.insert(IndexDataIter, std::move(Index));
+				IndexDataIter = IndicesData.insert(IndexDataIter, std::move(Index));
 				IndexDataIter++;
 			}
 
@@ -100,10 +104,11 @@ namespace WoodenEngine
 		}
 
 		// Create vertex buffer 
-		const auto VertexBufferSize = sizeof(SVertexData)*MeshData->VerticesData.size();
+		const auto VertexBufferSize = sizeof(SVertexData)*VerticesData.size();
 
 		MeshData->VertexBuffer = DX::CreateBuffer(Device, CMDList, 
-			VertexBufferSize, MeshData->VerticesData.data(), MeshData->VertexUploadBuffer);
+			VertexBufferSize, VerticesData.data(), MeshData->
+												  VertexUploadBuffer);
 
 		CMDList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
 			MeshData->VertexBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, 
@@ -115,12 +120,81 @@ namespace WoodenEngine
 		MeshData->VertexBufferView.StrideInBytes = sizeof(SVertexData);
 
 		// Create index buffer
-		const auto IndexBufferSize = sizeof(uint16)*MeshData->IndicesData.size();
+		const auto IndexBufferSize = sizeof(uint16)*IndicesData.size();
 		MeshData->IndexBuffer = DX::CreateBuffer(Device, CMDList,
-			IndexBufferSize, MeshData->IndicesData.data(), MeshData->IndexUploadBuffer);
+			IndexBufferSize, IndicesData.data(), MeshData->IndexUploadBuffer);
 
 		CMDList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
 			MeshData->IndexBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, 
+			D3D12_RESOURCE_STATE_INDEX_BUFFER));
+
+		// Setup index buffer view
+		MeshData->IndexBufferView.BufferLocation = MeshData->IndexBuffer->GetGPUVirtualAddress();
+		MeshData->IndexBufferView.SizeInBytes = IndexBufferSize;
+		MeshData->IndexBufferView.Format = DXGI_FORMAT_R16_UINT;
+
+		StaticMeshesData[MeshData->Name] = std::move(MeshData);
+	}
+
+	void FGameResource::LoadBillboards(
+		const std::vector<SVertexBillboardData>& VerticesData,
+		const std::string& MeshName,
+		const std::string& SubmeshName,
+		ComPtr<ID3D12GraphicsCommandList> CMDList)
+	{
+		if (MeshName.empty())
+		{
+			throw std::invalid_argument("MeshName must be not empty");
+		}
+
+		auto StaticMeshesDataIter = StaticMeshesData.find(MeshName);
+		if (StaticMeshesDataIter != StaticMeshesData.end())
+		{
+			throw std::invalid_argument("A mesh with the name " + MeshName + " exists yet");
+		}
+
+		auto MeshData = std::make_unique<FMeshData>(MeshName);
+
+		uint16_t NumVertices = VerticesData.size();
+
+		std::vector<uint16_t> IndicesData;
+		IndicesData.resize(NumVertices);
+		
+		for (uint16_t i = 0; i < NumVertices; ++i)
+		{
+			IndicesData[i] = i;
+		}
+		
+		auto SubmeshData = std::make_unique<FSubmeshData>(SubmeshName);
+		SubmeshData->NumIndices = NumVertices;
+		SubmeshData->IndexBegin = 0;
+		SubmeshData->VertexBegin = 0;
+
+		MeshData->SubmeshesData.insert(std::make_pair(SubmeshName, std::move(SubmeshData)));
+
+		// Create vertex buffer 
+		const auto VertexBufferSize = sizeof(SVertexBillboardData)*VerticesData.size();
+
+		MeshData->VertexBuffer = DX::CreateBuffer(Device, CMDList,
+												  VertexBufferSize, VerticesData.data(), MeshData->
+												  VertexUploadBuffer);
+
+		CMDList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
+			MeshData->VertexBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST,
+			D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER));
+
+		// Setup vertex buffer view
+		MeshData->VertexBufferView.BufferLocation = MeshData->VertexBuffer->GetGPUVirtualAddress();
+		MeshData->VertexBufferView.SizeInBytes = VertexBufferSize;
+		MeshData->VertexBufferView.StrideInBytes = sizeof(SVertexBillboardData);
+
+		// Create index buffer
+		const auto IndexBufferSize = sizeof(uint16)*IndicesData.size();
+		MeshData->IndexBuffer = DX::CreateBuffer(Device, CMDList,
+												 IndexBufferSize, IndicesData.data(), MeshData->IndexUploadBuffer);
+
+		CMDList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
+			MeshData->IndexBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST,
 			D3D12_RESOURCE_STATE_INDEX_BUFFER));
 
 		// Setup index buffer view
@@ -149,7 +223,8 @@ namespace WoodenEngine
 	void FGameResource::LoadTexture(
 		const std::wstring& FileName,
 		const std::string& Name,
-		ComPtr<ID3D12GraphicsCommandList> CmdList)
+		ComPtr<ID3D12GraphicsCommandList> CmdList,
+		D3D12_SRV_DIMENSION ViewDimension)
 	{
 		if (CmdList == nullptr)
 		{
@@ -172,6 +247,7 @@ namespace WoodenEngine
 
 		Texture->Name = Name;
 		Texture->FileName = FileName;
+		Texture->ViewDimension = ViewDimension;
 
 		TexturesData[Texture->Name] = std::move(Texture);
 	}

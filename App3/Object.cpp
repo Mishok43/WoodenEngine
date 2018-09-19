@@ -5,13 +5,13 @@ namespace WoodenEngine
 	WObject::WObject(
 		const std::string& MeshName,
 		const std::string& SubmeshName,
-		const XMFLOAT3& Position, 
-		const XMFLOAT3& Rotation, 
-		const XMFLOAT3& Scale) : 
-		MeshName(MeshName), 
+		const XMFLOAT3& Position,
+		const XMFLOAT3& Rotation,
+		const XMFLOAT3& Scale) :
+		MeshName(MeshName),
 		SubmeshName(SubmeshName),
-		Position(Position), 
-		Rotation(Rotation), 
+		Position(Position),
+		Rotation(Rotation),
 		Scale(Scale),
 		bIsRenderable(true)
 	{
@@ -83,9 +83,9 @@ namespace WoodenEngine
 		this->Color = Color;
 	}
 
-	void WObject::UpdateWorldTransform() noexcept 
+	void WObject::UpdateWorldTransform() noexcept
 	{
-		WorldTransform = 
+		WorldTransform =
 			DirectX::XMMatrixScalingFromVector(XMLoadFloat3(&Scale))*
 			DirectX::XMMatrixRotationRollPitchYawFromVector(XMLoadFloat3(&Rotation))*
 			DirectX::XMMatrixTranslationFromVector(XMLoadFloat3(&Position));
@@ -112,6 +112,11 @@ namespace WoodenEngine
 	void WObject::SetNumDirtyConstBuffers(const uint8 NumDirtyConstBuffers) noexcept
 	{
 		this->NumDirtyConstBuffers = NumDirtyConstBuffers;
+	}
+
+	void WObject::SetRenderPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY PrimitiveTopology) noexcept
+	{
+		RenderPrimitiveTology = PrimitiveTopology;
 	}
 
 	void WObject::SetMaterial(const FMaterialData* Material)
@@ -254,6 +259,11 @@ namespace WoodenEngine
 	int WObject::GetWaterFactor() const noexcept
 	{
 		return WaterFactor;
+	}
+
+	D3D_PRIMITIVE_TOPOLOGY WObject::GetRenderPrimitiveTopology() const noexcept
+	{
+		return RenderPrimitiveTology;
 	}
 
 	float WObject::GetLifeTime() const noexcept

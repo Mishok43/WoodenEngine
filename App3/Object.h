@@ -143,6 +143,12 @@ namespace WoodenEngine
 			  */
 			virtual void SetScale(const XMFLOAT3& Scale) noexcept;
 		
+			/** @brief Sets render primitive topology
+			  * @param Topology (D3D_PRIMITIVE_TOPOLOGY)
+			  * @return (void)
+			  */
+			void SetRenderPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY Topology) noexcept;
+			
 			/** @brief Sets absolute world scale
 			* @param X Absolute x-axis scale (const float)
 			* @param Y Absolute y-axis scale (const float)
@@ -222,6 +228,12 @@ namespace WoodenEngine
 			  */
 			const std::string& GetSubmeshName() const;
 
+
+			/** @brief Returns primitive topology type for rendering
+			  * @return (D3D_PRIMITIVE_TOPOLOGY)
+			  */
+			D3D_PRIMITIVE_TOPOLOGY GetRenderPrimitiveTopology() const noexcept;
+
 			/** @brief Returns pointer to material data or nullptr 
 			  * @return (WoodenEngine::FMaterialData*)
 			  */
@@ -296,6 +308,9 @@ namespace WoodenEngine
 			
 			// Texture coordinates transform matrix
 			XMFLOAT4X4 TextureTransform = MathHelper::Identity4x4();
+
+			// Rendering primitive topology type (ex: point, trianglelist)
+			D3D_PRIMITIVE_TOPOLOGY RenderPrimitiveTology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 
 			// Life time in seconds
 			float LifeTime = 0;

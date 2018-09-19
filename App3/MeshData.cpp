@@ -2,6 +2,7 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <array>
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
@@ -200,7 +201,75 @@ namespace WoodenEngine
 		return SphereMeshData;
 	}
 
-	std::unique_ptr<FMeshRawData> FMeshGenerator::CreateGrid(float Width, float Height, uint32 NumVSubdivisions, uint32 NumHSubdivisions) const noexcept
+	std::unique_ptr<FMeshRawData> FMeshGenerator::CreateGeoSphere(
+		float Radius,
+		uint16_t NumSubdivision) const noexcept
+	{
+		auto MeshData = std::make_unique<FMeshRawData>("Geosphere");
+		
+		NumSubdivision = std::min<uint16_t>(NumSubdivision, 6);
+
+		// for unit sphere sqrt(x^2 + z^2) ~= 1.0
+		const auto X = 0.525731f; 
+		const auto Z = 0.850651f;
+
+
+		XMFLOAT3 Vertices[12] =
+		{
+			XMFLOAT3(-X, 0.0f, Z),  XMFLOAT3(X, 0.0f, Z),
+			XMFLOAT3(-X, 0.0f, -Z), XMFLOAT3(X, 0.0f, -Z),
+			XMFLOAT3(0.0f, Z, X),   XMFLOAT3(0.0f, Z, -X),
+			XMFLOAT3(0.0f, -Z, X),  XMFLOAT3(0.0f, -Z, -X),
+			XMFLOAT3(Z, X, 0.0f),   XMFLOAT3(-Z, X, 0.0f),
+			XMFLOAT3(Z, -X, 0.0f),  XMFLOAT3(-Z, -X, 0.0f)
+		};
+
+		MeshData->Vertices.resize(12);
+		MeshData->Indices = {
+			1,4,0,  4,9,0,  4,5,9,  8,5,4,  1,8,4,
+			1,10,8, 10,3,8, 8,3,5,  3,2,5,  3,7,2,
+			3,10,7, 10,6,7, 6,11,7, 6,0,11, 6,1,0,
+			10,1,6, 11,0,9, 2,11,9, 5,2,9,  11,2,7
+		};
+
+		for (std::size_t i = 0; i < 12; ++i)
+		{
+			MeshData->Vertices[i].Position = Vertices[i];
+		}
+
+		for (uint16_t i = 0; i < NumSubdivision; ++i)
+		{
+			Subdivide(MeshData.get());
+		}
+
+		for (uint32_t i = 0; i < MeshData->Vertices.size(); ++i)
+		{
+			XMVECTOR Normal = XMVector3Normalize(XMLoadFloat3(&MeshData->Vertices[i].Position));
+			XMVECTOR Position = Normal * Radius;
+			XMStoreFloat3(&MeshData->Vertices[i].Position, Position);
+			XMStoreFloat3(&MeshData->Vertices[i].Normal, Normal);
+
+			float theta = atan2f(MeshData->Vertices[i].Position.z, MeshData->Vertices[i].Position.x);    // Put in [0, 2pi].    
+			if(theta < 0.0f)      
+				theta += XM_2PI;    
+			float phi = acosf(MeshData->Vertices[i].Position.y/ Radius);
+			MeshData->Vertices[i].TexC.x = theta / XM_2PI;
+			MeshData->Vertices[i].TexC.y = phi / XM_PI;
+
+			MeshData->Vertices[i].Tangent.x = -Radius * sinf(phi)*sinf(theta);
+			MeshData->Vertices[i].Tangent.y = 0.0f;
+			MeshData->Vertices[i].Tangent.z = +Radius * sinf(phi)*cosf(theta);
+
+			XMStoreFloat3(&MeshData->Vertices[i].Tangent, XMVector3Normalize(XMLoadFloat3(&MeshData->Vertices[i].Tangent)));
+		}
+		return std::move(MeshData);
+	}
+
+	std::unique_ptr<FMeshRawData> FMeshGenerator::CreateGrid(
+		float Width, 
+		float Height, 
+		uint32 NumVSubdivisions, 
+		uint32 NumHSubdivisions) const noexcept
 	{
 		auto MeshData = std::make_unique<FMeshRawData>("Grid");
 

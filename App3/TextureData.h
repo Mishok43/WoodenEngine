@@ -24,5 +24,7 @@ struct FTextureData
 	ComPtr<ID3D12Resource> UploadResource = nullptr;
 
 	uint32 iSRVHeap = UINT32_MAX;
+
+	D3D12_SRV_DIMENSION ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 };
 

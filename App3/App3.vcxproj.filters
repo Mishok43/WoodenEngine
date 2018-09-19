@@ -82,12 +82,15 @@
     <ClInclude Include="LightSpot.h" />
     <ClInclude Include="LightDirectional.h" />
     <ClInclude Include="FloatingLightPoint.h" />
+    <ClInclude Include="BillboardData.h" />
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App3_TemporaryKey.pfx" />
+    <None Include="ClassDiagram.cd" />
+    <None Include="ClassDiagram1.cd" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="Assets\Models\skull.txt">

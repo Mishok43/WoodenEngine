@@ -6,6 +6,7 @@
 
 #include "ShaderStructures.h"
 #include "MeshData.h"
+#include "BillboardData.h"
 #include "MaterialData.h"
 #include "TextureData.h"
 
@@ -61,6 +62,14 @@ namespace WoodenEngine
 			const std::string& MeshName,
 			ComPtr<ID3D12GraphicsCommandList> CmdList);
 
+
+		void LoadBillboards(
+			const std::vector<SVertexBillboardData>& Vertices,
+			const std::string& MeshName,
+			const std::string& SubmeshName,
+			ComPtr<ID3D12GraphicsCommandList> CMDList
+		);
+
 		/** @brief Adds material data to cache for future access
 		  * @param MaterialData Unique ptr to material data (std::unique_ptr<FMaterialData>)
 		  * @return (void)
@@ -71,7 +80,10 @@ namespace WoodenEngine
 		  * @param Name Texture's name (const std::string &)
 		  * @return (void)
 		  */
-		void LoadTexture(const std::wstring& FileName, const std::string& Name, ComPtr<ID3D12GraphicsCommandList> CmdList);
+		void LoadTexture(const std::wstring& FileName,
+						 const std::string& Name,
+						 ComPtr<ID3D12GraphicsCommandList> CmdList, 
+						 D3D12_SRV_DIMENSION ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D);
 
 		/** @brief Finds a material data by name and returns it's iConstBuffer
 		  * @param MaterialName (const std::string &)

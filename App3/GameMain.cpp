@@ -49,10 +49,10 @@ namespace WoodenEngine
 		BuildFrameResources();
 		InitTexturesViews();
 
-		BuildRootSignature();
 		InitShaders();
+		BuildRootSignature();
 		BuildPipelineStateObject();
-
+		
 		DX::ThrowIfFailed(CMDList->Close());
 		ID3D12CommandList* cmdLists[] = { CMDList.Get() };
 		CmdQueue->ExecuteCommandLists(_countof(cmdLists), cmdLists);
@@ -141,10 +141,26 @@ namespace WoodenEngine
 			D3D12_SHADER_RESOURCE_VIEW_DESC SRVDesc = {};
 			SRVDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 			SRVDesc.Format = TextureData->Resource->GetDesc().Format;
-			SRVDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-			SRVDesc.Texture2D.MostDetailedMip = 0;
-			SRVDesc.Texture2D.MipLevels = TextureData->Resource->GetDesc().MipLevels;
-			SRVDesc.Texture2D.ResourceMinLODClamp = 0.0f;
+
+			SRVDesc.ViewDimension = TextureData->ViewDimension;
+			switch (SRVDesc.ViewDimension)
+			{
+			case D3D12_SRV_DIMENSION_TEXTURE2D:
+				{
+					SRVDesc.Texture2D.MostDetailedMip = 0;
+					SRVDesc.Texture2D.MipLevels = TextureData->Resource->GetDesc().MipLevels;
+					SRVDesc.Texture2D.ResourceMinLODClamp = 0.0f;
+					break;
+				}
+			case D3D12_SRV_DIMENSION_TEXTURE2DARRAY:
+				{
+					SRVDesc.Texture2DArray.MostDetailedMip = 0;
+					SRVDesc.Texture2DArray.MipLevels = TextureData->Resource->GetDesc().MipLevels;
+					SRVDesc.Texture2DArray.FirstArraySlice = 0;
+					SRVDesc.Texture2DArray.ArraySize = TextureData->Resource->GetDesc().DepthOrArraySize;
+					break;
+				}
+			}
 
 			Device->CreateShaderResourceView(TextureData->Resource.Get(), &SRVDesc, SRVDescriptorHandle);
 
@@ -168,13 +184,25 @@ namespace WoodenEngine
 		}
 #endif
 
-		DX::ThrowIfFailed(D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&Device)));
+		DX::ThrowIfFailed(D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(&Device)));
 
 		RTVDescriptorHandleIncrementSize = Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 		DSVDescriptorHandleIncrementSize = Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 		CBVSRVDescriptorHandleIncrementSize = Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
 		DX::ThrowIfFailed(Device->CreateFence(FenceValue, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&Fence)));
+
+
+		D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS QualityLevels;
+		QualityLevels.Format = BufferFormat;
+		QualityLevels.SampleCount = 4;
+		QualityLevels.Flags = D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE;
+		QualityLevels.NumQualityLevels = 0;
+		Device->CheckFeatureSupport(D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS,
+									&QualityLevels,
+									sizeof(QualityLevels));
+
+		MsaaQualityLevels = QualityLevels.NumQualityLevels;
 
 		fenceEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
 	}
@@ -199,6 +227,8 @@ namespace WoodenEngine
 		GameResources->LoadTexture(BasePath + L"grass.dds", "grass", CMDList);
 		GameResources->LoadTexture(BasePath + L"ice.dds", "glass", CMDList);
 		GameResources->LoadTexture(BasePath + L"white1x1.dds", "white1x1", CMDList);
+		GameResources->LoadTexture(BasePath + L"treeArray2.dds", "tree", CMDList, 
+								   D3D12_SRV_DIMENSION_TEXTURE2DARRAY);
 	}
 
 
@@ -301,6 +331,14 @@ namespace WoodenEngine
 		GreenMaterial->DiffuseTexture = GameResources->GetTextureData("white1x1");
 		GameResources->AddMaterial(std::move(GreenMaterial));
 		++iConstBuffer;
+
+		auto TreesMaterial = std::make_unique<FMaterialData>("tree");
+		TreesMaterial->iConstBuffer = iConstBuffer;
+		TreesMaterial->FresnelR0 = { 0.05f, 0.05f, 0.05f };
+		TreesMaterial->Roughness = 0.8f;
+		TreesMaterial->DiffuseTexture = GameResources->GetTextureData("tree");
+		GameResources->AddMaterial(std::move(TreesMaterial));
+		++iConstBuffer;
 	}
 
 	void FGameMain::AddObjects()
@@ -309,22 +347,23 @@ namespace WoodenEngine
 		auto MeshGenerator = std::make_unique<FMeshGenerator>();
 		
 		auto BoxMesh = MeshGenerator->CreateBox(1.0f, 1.0f, 1.0f);
-		
+
+		auto SphereMesh = MeshGenerator->CreateSphere(1.0f, 15.0f, 15.0f);
+
 		auto LandscapeMesh = MeshGenerator->CreateLandscapeGrid(40.0f, 40.0f, 80, 80);
 		LandscapeMesh->Name = "landscape";
 
 		auto MirrorMesh = MeshGenerator->CreateBox(6.0f, 6.0f, 0.5f, 4);
 		MirrorMesh->Name = "Mirror";
 
+		auto GeosphereMesh = MeshGenerator->CreateGeoSphere(1.0f, 0);
+
 		auto PlaneMesh = MeshGenerator->CreateGrid(23.0f, 23.0f, 30, 30);
-		auto SphereMesh = MeshGenerator->CreateSphere(1.0f, 15.0f, 15.0f);
 
 		auto MeshParser = std::make_unique<FMeshParser>();
-		//auto dinoMesh = MeshParser->ParseTxtData("Assets\\Models\\dino.txt");
-		//dinoMesh->Name = "dino";
 
 		auto DinoMesh = MeshParser->ParseObjFile("Assets\\Models\\robot.obj");
-		DinoMesh->Name = "robot";
+		DinoMesh->Name = "dino";
 
 		const auto BoxSubmeshName = BoxMesh->Name;
 		const auto SphereSubmeshName = SphereMesh->Name;
@@ -332,12 +371,14 @@ namespace WoodenEngine
 		const auto PlaneSubmeshName = PlaneMesh->Name;
 		const auto LandscapeSubmeshName = LandscapeMesh->Name;
 		const auto MirrorSubmeshName = MirrorMesh->Name;
-		const auto RobotSubmeshName = DinoMesh->Name;
+		const auto dinoSubmeshName = DinoMesh->Name;
+		const auto GeosphereSubmeshName = GeosphereMesh->Name;
 
 		const std::string& GeoMeshName = "geo";
 		std::vector<std::unique_ptr<FMeshRawData>> GeometricSubmeshes;
 		GeometricSubmeshes.push_back(std::move(BoxMesh));
 		GeometricSubmeshes.push_back(std::move(SphereMesh));
+		GeometricSubmeshes.push_back(std::move(GeosphereMesh));
 		GameResources->LoadStaticMesh(std::move(GeometricSubmeshes), GeoMeshName, CMDList);
 
 		const std::string& EnviromentMeshName = "env";
@@ -419,7 +460,7 @@ namespace WoodenEngine
 		AddObjectToScene(ERenderLayer::Mirrors, MirrorObject.get());
 		Objects.push_back(std::move(MirrorObject));
 
-		auto DinoObject = std::make_unique<WObject>(DinoMeshName, RobotSubmeshName);
+		auto DinoObject = std::make_unique<WObject>(DinoMeshName, dinoSubmeshName);
 		DinoObject->SetPosition(-20.0f, 4.0f, 10.0f);
 		DinoObject->SetRotation(0, XM_PI, 0);
 		DinoObject->SetScale(0.5f, 0.5f, 0.5f);
@@ -452,6 +493,31 @@ namespace WoodenEngine
 		Camera = CameraObject.get();
 
 		Objects.push_back(std::move(CameraObject));
+
+		// Add billboards
+
+
+		std::vector<SVertexBillboardData> BillboardVerticesData(6);
+		for (int i = 0; i < 6; ++i)
+		{
+			BillboardVerticesData[i].Position = XMFLOAT3(-10.0f, 6.0f, -5.0f + 3.0f*i);
+			BillboardVerticesData[i].Size = XMFLOAT2(4.0f, 4.0f);
+		}
+
+		GameResources->LoadBillboards(BillboardVerticesData, "Billboards", "Trees", CMDList);
+
+		auto BillboardsObject = std::make_unique<WObject>("Billboards", "Trees");
+		BillboardsObject->SetRenderPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_POINTLIST);
+		BillboardsObject->SetMaterial(GameResources->GetMaterialData("tree"));
+		AddObjectToScene(ERenderLayer::Billboard, BillboardsObject.get());
+		Objects.push_back(std::move(BillboardsObject));
+
+		auto GeosphereObject = std::make_unique<WObject>("geo", "Geosphere");
+		GeosphereObject->SetMaterial(GameResources->GetMaterialData("green"));
+		GeosphereObject->SetPosition(0.0f, 10.0f, 0.0f);
+		GeosphereObject->SetScale(2.0f, 2.0f, 2.0f);
+		AddObjectToScene(ERenderLayer::Geosphere, GeosphereObject.get());
+		Objects.push_back(std::move(GeosphereObject));
 	}
 
 	void FGameMain::AddLights()
@@ -623,6 +689,19 @@ namespace WoodenEngine
 		Shaders["opaquePS"] = DX::CompileShader(L"Shaders\\Shader.hlsl", OpaqueShaderDefines, "PS", "ps_5_0");
 		Shaders["alphatestPS"] = DX::CompileShader(L"Shaders\\Shader.hlsl", AlphaTestShaderDefines, "PS", "ps_5_0");
 		Shaders["shadowPS"] = DX::CompileShader(L"Shaders\\Shader.hlsl", ShadowShaderDefines, "PS", "ps_5_0");
+
+		Shaders["geosphereGS"] = DX::CompileShader(L"Shaders\\Geosphere.hlsl", OpaqueShaderDefines, "GS", "gs_5_0");
+		Shaders["geospherePS"] = DX::CompileShader(L"Shaders\\Geosphere.hlsl", OpaqueShaderDefines, "PS", "ps_5_0");
+		Shaders["geosphereVS"] = DX::CompileShader(L"Shaders\\Geosphere.hlsl", nullptr, "VS", "vs_5_0");
+		
+		Shaders["billboardGS"] = DX::CompileShader(L"Shaders\\TreeSprite.hlsl", OpaqueShaderDefines, "GS", "gs_5_0");
+		Shaders["billboardPS"] = DX::CompileShader(L"Shaders\\TreeSprite.hlsl", AlphaTestShaderDefines, "PS", "ps_5_0");
+		Shaders["billboardVS"] = DX::CompileShader(L"Shaders\\TreeSprite.hlsl", nullptr, "VS", "vs_5_0");
+
+		Shaders["debugNormalsGS"] = DX::CompileShader(L"Shaders\\DebugNormals.hlsl", nullptr, "GS", "gs_5_0");
+		Shaders["debugNormalsPS"] = DX::CompileShader(L"Shaders\\DebugNormals.hlsl", nullptr, "PS", "ps_5_0");
+		Shaders["debugNormalsVS"] = DX::CompileShader(L"Shaders\\DebugNormals.hlsl", nullptr, "VS", "vs_5_0");
+
 	}
 
 	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> FGameMain::GetStaticSamplers() const
@@ -758,20 +837,20 @@ namespace WoodenEngine
 		OpaquePSODesc.NumRenderTargets = 1;
 		OpaquePSODesc.RTVFormats[0] = BufferFormat;
 		OpaquePSODesc.DSVFormat = DepthStencilFormat;
-		OpaquePSODesc.SampleDesc.Count = 1;
-		OpaquePSODesc.SampleDesc.Quality = 0;
+		OpaquePSODesc.SampleDesc.Count =  4 ;
+		OpaquePSODesc.SampleDesc.Quality = MsaaQualityLevels-1;
 		OpaquePSODesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 		OpaquePSODesc.InputLayout = InputLayout;
 
 		DX::ThrowIfFailed(Device->CreateGraphicsPipelineState(
 			&OpaquePSODesc,
 			IID_PPV_ARGS(&PipelineStates["opaque"])));
-		
+
 		// Create pipeline state object with based on alpha blending for transparent objects
 
 		D3D12_RENDER_TARGET_BLEND_DESC BlendDesc;
 		BlendDesc.BlendEnable = true;
-		
+
 		// Cd = As*Cs + (1-As)*Cd
 		BlendDesc.BlendOp = D3D12_BLEND_OP_ADD;
 		BlendDesc.SrcBlend = D3D12_BLEND_SRC_ALPHA;
@@ -781,7 +860,7 @@ namespace WoodenEngine
 		BlendDesc.BlendOpAlpha = D3D12_BLEND_OP_ADD;
 		BlendDesc.SrcBlendAlpha = D3D12_BLEND_ONE;
 		BlendDesc.DestBlendAlpha = D3D12_BLEND_ZERO;
-		
+
 		// Distable logic operators because of enabled blendop
 		BlendDesc.LogicOpEnable = false;
 		BlendDesc.LogicOp = D3D12_LOGIC_OP_NOOP;
@@ -789,7 +868,6 @@ namespace WoodenEngine
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC TransparentPSODesc = OpaquePSODesc;
 		TransparentPSODesc.BlendState.RenderTarget[0] = BlendDesc;
-		
 
 		DX::ThrowIfFailed(Device->CreateGraphicsPipelineState(
 			&TransparentPSODesc,
@@ -799,7 +877,7 @@ namespace WoodenEngine
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC AlfaTestPSODesc = OpaquePSODesc;
 		AlfaTestPSODesc.PS = {
 			Shaders["alphatestPS"]->GetBufferPointer(),
-			Shaders["alphatestPS"]->GetBufferSize() 
+			Shaders["alphatestPS"]->GetBufferSize()
 		};
 		AlfaTestPSODesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
 
@@ -887,9 +965,10 @@ namespace WoodenEngine
 		ShadowDepthStencilDesc.BackFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
 
 
-		D3D12_GRAPHICS_PIPELINE_STATE_DESC ShadowPSODesc = TransparentPSODesc;
+		auto ShadowPSODesc = TransparentPSODesc;
 		ShadowPSODesc.DepthStencilState = ShadowDepthStencilDesc;
-		ShadowPSODesc.PS = {
+		ShadowPSODesc.PS =
+		{
 			Shaders["shadowPS"]->GetBufferPointer(),
 			Shaders["shadowPS"]->GetBufferSize()
 		};
@@ -898,6 +977,79 @@ namespace WoodenEngine
 			IID_PPV_ARGS(&PipelineStates["shadow"])
 		));
 
+		auto BillboardPSODesc = AlfaTestPSODesc;
+		const D3D12_INPUT_ELEMENT_DESC BillboardPSOInput[2] =
+		{
+			{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			{ "SIZE", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+		};
+
+
+		BillboardPSODesc.InputLayout.pInputElementDescs = BillboardPSOInput;
+		BillboardPSODesc.InputLayout.NumElements = 2;
+		BillboardPSODesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+		BillboardPSODesc.BlendState.AlphaToCoverageEnable = true;
+		BillboardPSODesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
+		BillboardPSODesc.GS =
+		{
+			Shaders["billboardGS"]->GetBufferPointer(), Shaders["billboardGS"]->GetBufferSize()
+		};
+
+		BillboardPSODesc.PS =
+		{
+			Shaders["billboardPS"]->GetBufferPointer(), Shaders["billboardPS"]->GetBufferSize()
+		};
+		BillboardPSODesc.VS =
+		{
+			Shaders["billboardVS"]->GetBufferPointer(), Shaders["billboardVS"]->GetBufferSize()
+		};
+
+		DX::ThrowIfFailed(Device->CreateGraphicsPipelineState(
+			&BillboardPSODesc,
+			IID_PPV_ARGS(&PipelineStates["billboard"])
+		));
+
+		auto GeospherePSODesc = OpaquePSODesc;
+		GeospherePSODesc.GS =
+		{
+			Shaders["geosphereGS"]->GetBufferPointer(), Shaders["geosphereGS"]->GetBufferSize()
+		};
+
+		GeospherePSODesc.PS =
+		{
+			Shaders["geospherePS"]->GetBufferPointer(), Shaders["geospherePS"]->GetBufferSize()
+		};
+		GeospherePSODesc.VS =
+		{
+			Shaders["geosphereVS"]->GetBufferPointer(), Shaders["geosphereVS"]->GetBufferSize()
+		};
+		
+
+		DX::ThrowIfFailed(Device->CreateGraphicsPipelineState(
+			&GeospherePSODesc,
+			IID_PPV_ARGS(&PipelineStates["geosphere"])
+		));
+
+		auto DebugNormalsPSODesc = OpaquePSODesc;
+		DebugNormalsPSODesc.GS =
+		{
+			Shaders["debugNormalsGS"]->GetBufferPointer(), Shaders["debugNormalsGS"]->GetBufferSize()
+		};
+
+		DebugNormalsPSODesc.PS =
+		{
+			Shaders["debugNormalsPS"]->GetBufferPointer(), Shaders["debugNormalsPS"]->GetBufferSize()
+		};
+		DebugNormalsPSODesc.VS =
+		{
+			Shaders["debugNormalsVS"]->GetBufferPointer(), Shaders["debugNormalsVS"]->GetBufferSize()
+		};
+
+
+		DX::ThrowIfFailed(Device->CreateGraphicsPipelineState(
+			&DebugNormalsPSODesc,
+			IID_PPV_ARGS(&PipelineStates["debugNormals"])
+		));
 	}
 
 	void WoodenEngine::FGameMain::Update(float dtime)
@@ -1006,7 +1158,8 @@ namespace WoodenEngine
 				XMStoreFloat4x4(&ObjectShaderData.WorldMatrix, XMMatrixTranspose(WorldMatrix));
 				
 				auto TextureTransform = Object->GetTextureTransform();
-				XMStoreFloat4x4(&ObjectShaderData.MaterialTransform, 
+				XMStoreFloat4x4(
+					&ObjectShaderData.MaterialTransform, 
 					XMMatrixTranspose(XMLoadFloat4x4(&TextureTransform)));
 
 				ObjectShaderData.Time = Object->GetLifeTime();
@@ -1222,9 +1375,9 @@ namespace WoodenEngine
 
 		CMDList->SetPipelineState(PipelineStates["alphatest"].Get());
 		RenderObjects(ERenderLayer::AlphaTested, CMDList);
-		
-		CMDList->ClearDepthStencilView(DSVDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),  D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
 
+		CMDList->SetPipelineState(PipelineStates["billboard"].Get());
+		RenderObjects(ERenderLayer::Billboard, CMDList);
 
 		CMDList->SetPipelineState(PipelineStates["shadow"].Get());
 		RenderObjects(ERenderLayer::Shadow, CMDList);
@@ -1232,9 +1385,12 @@ namespace WoodenEngine
 		CMDList->SetPipelineState(PipelineStates["opaque"].Get());
 		RenderObjects(ERenderLayer::CastShadow, CMDList);
 
+		CMDList->SetPipelineState(PipelineStates["geosphere"].Get());
+		RenderObjects(ERenderLayer::Geosphere, CMDList);
+
 		CMDList->SetPipelineState(PipelineStates["transparent"].Get());
-		RenderObjects(ERenderLayer::Transparent, CMDList);
 		RenderObjects(ERenderLayer::Mirrors, CMDList);
+		RenderObjects(ERenderLayer::Transparent, CMDList);
 
 
 		CMDList->ResourceBarrier(
@@ -1286,9 +1442,10 @@ namespace WoodenEngine
 			const auto& MeshData = GameResources->GetMeshData(Object->GetMeshName());
 			const auto& SubmeshData = GameResources->GetSubmeshData(Object->GetMeshName(), Object->GetSubmeshName());
 
+			CMDList->IASetPrimitiveTopology(Object->GetRenderPrimitiveTopology());
 			CMDList->IASetVertexBuffers(0, 1, &MeshData.VertexBufferView);
 			CMDList->IASetIndexBuffer(&MeshData.IndexBufferView);
-			CMDList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
 
 			auto ObjectDataResAddress =
 				CurrFrameResource->ObjectsDataBuffer->Resource()->GetGPUVirtualAddress() +
@@ -1313,7 +1470,6 @@ namespace WoodenEngine
 				SubmeshData.VertexBegin, 0);
 		}
 	}
-
 
 	void FGameMain::SignalAndWaitForGPU()
 	{
