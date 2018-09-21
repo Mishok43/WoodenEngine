@@ -342,7 +342,10 @@ namespace WoodenEngine
 		ComPtr<ID3D12Resource> SwapChainBuffers[NMR_SWAP_BUFFERS];
 		ComPtr<ID3D12Resource> DepthStencilBuffer;
 
+		// Root signatures for all PSO
 		std::unordered_map<std::string, ComPtr<ID3D12RootSignature>> RootSignatures;
+
+		// PSO
 		std::unordered_map<std::string, ComPtr<ID3D12PipelineState>> PipelineStates;
 		
 		uint16 RTVDescriptorHandleIncrementSize = 0;

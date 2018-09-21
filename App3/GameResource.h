@@ -63,6 +63,13 @@ namespace WoodenEngine
 			ComPtr<ID3D12GraphicsCommandList> CmdList);
 
 
+		/** @brief Add billboards
+		  * @param Vertices Vector of billboards vertices (const std::vector<SVertexBillboardData> &)
+		  * @param MeshName Name of mesh (const std::string &)
+		  * @param SubmeshName Name of submesh (const std::string &)
+		  * @param CMDList (ComPtr<ID3D12GraphicsCommandList>)
+		  * @return (void)
+		  */
 		void LoadBillboards(
 			const std::vector<SVertexBillboardData>& Vertices,
 			const std::string& MeshName,

@@ -104,7 +104,10 @@ namespace WoodenEngine
 
 	struct SVertexBillboardData 
 	{
+		// World space position of the billboard
 		XMFLOAT3 Position;
+
+		// Billboard texture absolute size
 		XMFLOAT2 Size;
 	};
 }
