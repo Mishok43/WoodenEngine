@@ -11,7 +11,7 @@
 #include "LightSpot.h"
 #include "FloatingLightPoint.h"
 #include "ShaderStructures.h"
-
+#include "FilterBlur.h"
 
 #define _DEBUG
 
@@ -52,7 +52,8 @@ namespace WoodenEngine
 		InitShaders();
 		BuildRootSignature();
 		BuildPipelineStateObject();
-		
+		InitFilters();
+
 		DX::ThrowIfFailed(CMDList->Close());
 		ID3D12CommandList* cmdLists[] = { CMDList.Get() };
 		CmdQueue->ExecuteCommandLists(_countof(cmdLists), cmdLists);
@@ -176,11 +177,19 @@ namespace WoodenEngine
 #if defined(_DEBUG)
 		// If the project is in a debug build, enable debugging via SDK Layers.
 		{
-			ComPtr<ID3D12Debug> debugController;
-			if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController))))
+			ComPtr<ID3D12Debug> debugController0;
+			ComPtr<ID3D12Debug1> debugController1;
+			if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController0))))
 			{
-				debugController->EnableDebugLayer();
+				debugController0->EnableDebugLayer();
+				if (SUCCEEDED(debugController0->QueryInterface(IID_PPV_ARGS(&debugController1))))
+				{
+				//	debugController1->SetEnableGPUBasedValidation(true);
+				}
+
 			}
+
+
 		}
 #endif
 
@@ -195,7 +204,7 @@ namespace WoodenEngine
 
 		D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS QualityLevels;
 		QualityLevels.Format = BufferFormat;
-		QualityLevels.SampleCount = 4;
+		QualityLevels.SampleCount = 1;
 		QualityLevels.Flags = D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE;
 		QualityLevels.NumQualityLevels = 0;
 		Device->CheckFeatureSupport(D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS,
@@ -597,7 +606,7 @@ namespace WoodenEngine
 		D3D12_DESCRIPTOR_HEAP_DESC srvDescriptorHeapDesc = {};
 		srvDescriptorHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 		srvDescriptorHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-		srvDescriptorHeapDesc.NumDescriptors = GameResources->GetNumTexturesData();
+		srvDescriptorHeapDesc.NumDescriptors = GameResources->GetNumTexturesData()+4;
 		DX::ThrowIfFailed(Device->CreateDescriptorHeap(&srvDescriptorHeapDesc, IID_PPV_ARGS(&SRVDescriptorHeap)));
 	}
 
@@ -702,6 +711,9 @@ namespace WoodenEngine
 		Shaders["debugNormalsPS"] = DX::CompileShader(L"Shaders\\DebugNormals.hlsl", nullptr, "PS", "ps_5_0");
 		Shaders["debugNormalsVS"] = DX::CompileShader(L"Shaders\\DebugNormals.hlsl", nullptr, "VS", "vs_5_0");
 
+
+		Shaders["blurVertCS"] = DX::CompileShader(L"Shaders\\BlurCS.hlsl", nullptr, "BlurVertCS", "cs_5_0");
+		Shaders["blurHorizCS"] = DX::CompileShader(L"Shaders\\BlurCS.hlsl", nullptr, "BlurHorizCS", "cs_5_0");
 	}
 
 	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> FGameMain::GetStaticSamplers() const
@@ -811,7 +823,39 @@ namespace WoodenEngine
 
 		DX::ThrowIfFailed(Device->CreateRootSignature(
 			0, rootSignatureBlob->GetBufferPointer(), 
-			rootSignatureBlob->GetBufferSize(), IID_PPV_ARGS(&RootSignature)));
+			rootSignatureBlob->GetBufferSize(), IID_PPV_ARGS(&RootSignatures["main"])));
+
+		CD3DX12_DESCRIPTOR_RANGE SRVTable;
+		SRVTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
+
+		CD3DX12_DESCRIPTOR_RANGE UAVTable;
+		UAVTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0);
+
+		std::array<CD3DX12_ROOT_PARAMETER, 3> BlurSlotRootParameter;
+		BlurSlotRootParameter[0].InitAsConstants(12,0); // 0: Radius 1-12 - Blurring weights 
+		BlurSlotRootParameter[1].InitAsDescriptorTable(1, &SRVTable);
+		BlurSlotRootParameter[2].InitAsDescriptorTable(1, &UAVTable);
+
+		auto BlurRootSignatureDesc = CD3DX12_ROOT_SIGNATURE_DESC(
+			3, BlurSlotRootParameter.data(), 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT
+		);
+
+		ComPtr<ID3DBlob> SerializedBlurRootSignature = nullptr;
+		ComPtr<ID3DBlob> ErrorBlob = nullptr;
+		auto hr = D3D12SerializeRootSignature(
+			&BlurRootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1,
+			SerializedBlurRootSignature.GetAddressOf(), ErrorBlob.GetAddressOf());
+
+		if (ErrorBlob != nullptr)
+		{
+			::OutputDebugStringA((char*)ErrorBlob->GetBufferPointer());
+		}
+
+		DX::ThrowIfFailed(hr);
+
+		DX::ThrowIfFailed(Device->CreateRootSignature(
+			0, SerializedBlurRootSignature->GetBufferPointer(),
+			SerializedBlurRootSignature->GetBufferSize(), IID_PPV_ARGS(&RootSignatures["blur"])));
 	}
 
 	void FGameMain::BuildPipelineStateObject()
@@ -827,7 +871,7 @@ namespace WoodenEngine
 		InputLayout.NumElements = 3;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC OpaquePSODesc = {};
-		OpaquePSODesc.pRootSignature = RootSignature.Get();
+		OpaquePSODesc.pRootSignature = RootSignatures["main"].Get();
 		OpaquePSODesc.VS = { Shaders["standartVS"]->GetBufferPointer(), Shaders["standartVS"]->GetBufferSize() };
 		OpaquePSODesc.PS = { Shaders["opaquePS"]->GetBufferPointer(), Shaders["opaquePS"]->GetBufferSize() };
 		OpaquePSODesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
@@ -837,8 +881,8 @@ namespace WoodenEngine
 		OpaquePSODesc.NumRenderTargets = 1;
 		OpaquePSODesc.RTVFormats[0] = BufferFormat;
 		OpaquePSODesc.DSVFormat = DepthStencilFormat;
-		OpaquePSODesc.SampleDesc.Count =  4 ;
-		OpaquePSODesc.SampleDesc.Quality = MsaaQualityLevels-1;
+		OpaquePSODesc.SampleDesc.Count =  1 ;
+		OpaquePSODesc.SampleDesc.Quality = 0;
 		OpaquePSODesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 		OpaquePSODesc.InputLayout = InputLayout;
 
@@ -1045,11 +1089,59 @@ namespace WoodenEngine
 			Shaders["debugNormalsVS"]->GetBufferPointer(), Shaders["debugNormalsVS"]->GetBufferSize()
 		};
 
-
+		
 		DX::ThrowIfFailed(Device->CreateGraphicsPipelineState(
 			&DebugNormalsPSODesc,
 			IID_PPV_ARGS(&PipelineStates["debugNormals"])
 		));
+
+		D3D12_COMPUTE_PIPELINE_STATE_DESC BlurVertPSODesc = {};
+		BlurVertPSODesc.pRootSignature = RootSignatures["blur"].Get();
+		BlurVertPSODesc.CS =
+		{
+			Shaders["blurVertCS"]->GetBufferPointer(), Shaders["blurVertCS"]->GetBufferSize()
+		};
+		BlurVertPSODesc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
+
+		DX::ThrowIfFailed(Device->CreateComputePipelineState(
+			&BlurVertPSODesc, 
+			IID_PPV_ARGS(&PipelineStates["blurVert"])));
+
+
+		D3D12_COMPUTE_PIPELINE_STATE_DESC BlurHorizPSODesc = {};
+		BlurHorizPSODesc.pRootSignature = RootSignatures["blur"].Get();
+		BlurHorizPSODesc.CS =
+		{
+			Shaders["blurHorizCS"]->GetBufferPointer(), Shaders["blurHorizCS"]->GetBufferSize()
+		};
+		BlurHorizPSODesc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
+
+		DX::ThrowIfFailed(Device->CreateComputePipelineState(
+			&BlurHorizPSODesc,
+			IID_PPV_ARGS(&PipelineStates["blurHoriz"])));
+	}
+
+	void WoodenEngine::FGameMain::InitFilters()
+	{
+		auto NumMainDescriptors = GameResources->GetNumTexturesData();
+
+		auto SRVCPUDescriptorHandle = CD3DX12_CPU_DESCRIPTOR_HANDLE(
+			SRVDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
+			NumMainDescriptors, CBVSRVDescriptorHandleIncrementSize);
+
+		auto SRVGPUDescriptorHandle = CD3DX12_GPU_DESCRIPTOR_HANDLE(
+			SRVDescriptorHeap->GetGPUDescriptorHandleForHeapStart(),
+			NumMainDescriptors, CBVSRVDescriptorHandleIncrementSize);
+
+		FilterBlur = std::make_unique<FFilterBlur>();
+		FilterBlur->Init(
+			Window->Bounds.Width,
+			Window->Bounds.Height,
+			SRVCPUDescriptorHandle,
+			SRVGPUDescriptorHandle,
+			CBVSRVDescriptorHandleIncrementSize,
+			CMDList, Device
+		);
 	}
 
 	void WoodenEngine::FGameMain::Update(float dtime)
@@ -1339,7 +1431,7 @@ namespace WoodenEngine
 			1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET)
 		);
 
-		CMDList->SetGraphicsRootSignature(RootSignature.Get());
+		CMDList->SetGraphicsRootSignature(RootSignatures["main"].Get());
 
 		ID3D12DescriptorHeap* srvDescriptorHeaps[] = {  SRVDescriptorHeap.Get()};
 		CMDList->SetDescriptorHeaps(_countof(srvDescriptorHeaps), srvDescriptorHeaps);
@@ -1356,6 +1448,10 @@ namespace WoodenEngine
 
 		CMDList->OMSetRenderTargets(1, &CurrentBackBufferView(), true, &DSVDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
 
+
+		RenderObjects(ERenderLayer::Opaque, CMDList);
+
+		CMDList->SetPipelineState(PipelineStates["debugNormals"].Get());
 		RenderObjects(ERenderLayer::Opaque, CMDList);
 
 		CMDList->OMSetStencilRef(1);
@@ -1392,9 +1488,43 @@ namespace WoodenEngine
 		RenderObjects(ERenderLayer::Mirrors, CMDList);
 		RenderObjects(ERenderLayer::Transparent, CMDList);
 
+		FilterBlur->Execute(
+			PipelineStates["blurHoriz"],
+			PipelineStates["blurVert"],
+			RootSignatures["blur"],
+			CMDList, CurrentBackBuffer(), 4);
+
+		auto* BluredOutput = FilterBlur->Output();
+
+		std::array<CD3DX12_RESOURCE_BARRIER, 2> Barriers_0 = {
+			CD3DX12_RESOURCE_BARRIER::Transition(
+				CurrentBackBuffer(),
+				D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_COPY_DEST),
+			CD3DX12_RESOURCE_BARRIER::Transition(
+				BluredOutput,
+				D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_SOURCE
+			)
+		};
 
 		CMDList->ResourceBarrier(
-			1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT)
+			2, Barriers_0.data()
+		);
+
+		CMDList->CopyResource(CurrentBackBuffer(), BluredOutput);
+
+		std::array<CD3DX12_RESOURCE_BARRIER, 2> Barriers_1 = {
+			CD3DX12_RESOURCE_BARRIER::Transition(
+				CurrentBackBuffer(),
+				D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PRESENT),
+			CD3DX12_RESOURCE_BARRIER::Transition(
+				BluredOutput ,
+				D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_COMMON
+			)
+		};
+
+
+		CMDList->ResourceBarrier(
+			2, Barriers_1.data()
 		);
 
 		DX::ThrowIfFailed(CMDList->Close());

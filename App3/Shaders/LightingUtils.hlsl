@@ -106,7 +106,7 @@ float3 ComputePointLight(Light light, Material material, float3 vPos, float3 vNo
     float attenuationFactor = ComputeAttenuation(distanceToLight, light.FalloffStart, light.FalloffEnd);
     lightStrength *= attenuationFactor;
 
-    return BlinnPhong(lightStrength, lightDirection, vNormal, toCamera, material) * (0.5*cos(gameTime) + 0.5f);
+    return BlinnPhong(lightStrength, lightDirection, vNormal, toCamera, material);
 }
 
 float3 ComputeSpotLight(Light light, Material material, float3 vPos,

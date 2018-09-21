@@ -59,6 +59,7 @@
     <ClCompile Include="LightSpot.cpp" />
     <ClCompile Include="LightDirectional.cpp" />
     <ClCompile Include="FloatingLightPoint.cpp" />
+    <ClCompile Include="FliterBlur.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="App.h" />
@@ -83,6 +84,7 @@
     <ClInclude Include="LightDirectional.h" />
     <ClInclude Include="FloatingLightPoint.h" />
     <ClInclude Include="BillboardData.h" />
+    <ClInclude Include="FilterBlur.h" />
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest" />

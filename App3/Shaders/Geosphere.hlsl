@@ -107,6 +107,18 @@ struct VertexIn
 
 struct VertexOut
 {
+	// Local position
+	float3 PosL  : POSITION;
+
+	// Normal's local position
+	float3 NormalL: NORMAL;
+
+	// Texture coordinates
+	float2 TexC : TEXCOORD;
+};
+
+struct GeoOut
+{
 	// Projected position
 	float4 PosP : SV_POSITION;
 
@@ -124,43 +136,76 @@ static const float PI = 3.14159265f;
 
 VertexOut VS(VertexIn vin)
 {
-	VertexOut vout = (VertexOut)0.0f;
-	
-    if (cbIsWater > 0)
-    {
-        float sint = sin(cbTime / 15.0f);
-		vin.PosL.y = sin(vin.PosL.x + vin.PosL.z) * sint*0.5f;
-		vin.NormalL = float3(-sint * 0.5f*cos(vin.PosL.x), 1, -sint * 0.5f*cos(vin.PosL.z));
-        vin.NormalL = normalize(vin.NormalL);
-    }
-    else
-    {
-        float sint = sin(cbTime / 15.0f);
-        vin.PosL.y += cbWaterFactor * sint*0.5f;
-    }
+	VertexOut vout;
+	vout.PosL = vin.PosL;
+	vout.NormalL = vin.NormaL;
+	vout.TexC = vin.TexC;
+	return vout;
+}
 
-	// Compute world position
-        float4 posW = mul(float4(vin.PosL, 1.0f), cbWorld);
-        vout.PosW = posW.xyz;
-		vout.PosW.x /= posW.w;
-		vout.PosW.y /= posW.w;
-		vout.PosW.z /= posW.w;
+void Subdivide(VertexOut inVerts[3],
+			   out VertexOut outVerts[6])
+{
+	VertexOut NewVerts[3];
+	NewVerts[0].PosL = 0.5f*(inVerts[0].PosL + inVerts[1].PosL);
+	NewVerts[1].PosL = 0.5f*(inVerts[1].PosL + inVerts[2].PosL);
+	NewVerts[2].PosL = 0.5f*(inVerts[0].PosL + inVerts[2].PosL);
 
-	// Compute world normal
-        vout.NormalW = mul(vin.NormalL, (float3x3) cbWorld);
+	NewVerts[0].PosL = normalize(NewVerts[0].PosL);
+	NewVerts[1].PosL = normalize(NewVerts[1].PosL);
+	NewVerts[2].PosL = normalize(NewVerts[2].PosL);
 
-	// Compute projected position
-        vout.PosP = mul(posW, cbViewProj);
-	
-    // Apply texture tranformation for creating some effects
-    // TexC - 2D coordinates, converts them to homogolenous space (z = 0 and w = 1.0f)
-        vout.TexC = mul(mul(float4(vin.TexC, 0.0f, 1.0f), cbTexTransform), cbMatTransform).xy;
-   
+	NewVerts[0].NormalL = NewVerts[0].PosL;
+	NewVerts[1].NormalL = NewVerts[1].PosL;
+	NewVerts[2].NormalL = NewVerts[2].PosL;
 
-        return vout;
-    }
+	NewVerts[0].TexC = 0.5f*(inVerts[0].TexC + inVerts[1].TexC);
+	NewVerts[1].TexC = 0.5f*(inVerts[1].TexC + inVerts[2].TexC);
+	NewVerts[2].TexC = 0.5f*(inVerts[0].TexC + inVerts[2].TexC);
 
-float4 PS(VertexOut pin) : SV_Target
+
+	outVerts[0] = inVerts[0];
+	outVerts[1] = NewVerts[0];
+	outVerts[2] = NewVerts[2];
+	outVerts[3] = NewVerts[1];
+	outVerts[4] = inVerts[2];
+	outVerts[5] = inVerts[1];
+}
+
+
+[maxvertexcout(12)]
+void GS(triangle VertexOut gin[3],
+		uint primID: SV_PrimitiveID,
+		inout TriangleStream<GeoOut> triStream
+)
+{
+	VertexOut v[6];
+	Subdivide(gin, v);
+
+	GeoOut gout[6];
+	[unroll]
+	for (int i = 0; i < 6; ++i)
+	{
+		gout[i].PosW = mul(float4(v[i].PosL, 1.0f), cbWorld);
+		gout[i].NormalW = mul(v[i].NormalL, (float3x3)cbWorld); // normalize in PS because optimization
+		gout[i].PosP = mul(gout[i].PosW, cbViewProj);
+		gout[i].TexC = mul(mul(float4(v[i].TexC, 0.0f, 1.0f), cbTexTransform), cbMatTransform).xy;
+	}
+
+	[unroll]
+	for (int i = 0; i < 5; ++i)
+	{
+		triStream.Append(gout[i]);
+	}
+
+	triStream.RestartStrip();
+
+	triStream.Append(gout[1]);
+	triStream.Append(gout[5]);
+	triStream.Append(gout[3]);
+}
+
+float4 PS(GeoOut pin) : SV_Target
 {
 	float4 diffuseAlbedo = tDiffuseMap.Sample(sAnisotropicWrap, pin.TexC) * cbDiffuseAlbedo;
 

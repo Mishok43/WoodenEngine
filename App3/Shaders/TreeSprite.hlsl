@@ -22,34 +22,8 @@
 
 #include "LightingUtils.hlsl"
 
-cbuffer cbObject: register(b0)
-{
-	// World matrix
-	float4x4 cbWorld;
+Texture2DArray gTreeMapArray : register(t0);
 
-	// Texture transform matrix
-    float4x4 cbTexTransform;
-
-	// Object's life time
-	float cbTime;
-
-    int cbIsWater;
-
-    int cbWaterFactor;
-}
-
-cbuffer cbMaterial: register(b1)
-
-{	
-	// Diffuse reflection factor
-	float4 cbDiffuseAlbedo;
-
-	float3 cbFresnelR0;
-	
-	float cbRoughness;
-
-    float4x4 cbMatTransform;
-}
 
 Texture2D tDiffuseMap : register(t0);
 
@@ -59,6 +33,36 @@ SamplerState sLinearWrap : register(s2);
 SamplerState sLinearClamp : register(s3);
 SamplerState sAnisotropicWrap : register(s4);
 SamplerState sAnisotropicClamp : register(s5);
+
+
+cbuffer cbObject: register(b0)
+{
+	// World matrix
+	float4x4 cbWorld;
+
+	// Texture transform matrix
+	float4x4 cbTexTransform;
+
+	// Object's life time
+	float cbTime;
+
+	int cbIsWater;
+
+	int cbWaterFactor;
+}
+
+cbuffer cbMaterial: register(b1)
+
+{
+	// Diffuse reflection factor
+	float4 cbDiffuseAlbedo;
+
+	float3 cbFresnelR0;
+
+	float cbRoughness;
+
+	float4x4 cbMatTransform;
+}
 
 cbuffer cbFrame: register(b2)
 {
@@ -96,73 +100,95 @@ cbuffer cbFrame: register(b2)
 struct VertexIn
 {
 	// Local position
-	float3 PosL  : POSITION;
+	float3 CenterW  : POSITION;
 
 	// Normal's local position
-	float3 NormalL: NORMAL;
-
-	// Texture coordinates
-    float2 TexC : TEXCOORD;
+	float2 SizeW: SIZE;
 };
 
 struct VertexOut
 {
-	// Projected position
-	float4 PosP : SV_POSITION;
+	// Local position
+	float3 CenterW  : POSITION;
 
-	// World position
+	// Normal's local position
+	float2 SizeW: SIZE;
+};
+
+struct GeoOut
+{
+	float4 PosH : SV_POSITION;
 	float3 PosW : POSITION;
-
-	// Normal's world position
-	float3 NormalW: Normal;
-
-	// Texture coordinates
-    float2 TexC : TEXCOORD;
+	float3 NormalW: NORMAL;
+	float2 TexC: TEXCOORD;
+	uint   PrimID  : SV_PrimitiveID;
 };
 
 static const float PI = 3.14159265f;
 
+
 VertexOut VS(VertexIn vin)
 {
-	VertexOut vout = (VertexOut)0.0f;
-	
-    if (cbIsWater > 0)
-    {
-        float sint = sin(cbTime / 15.0f);
-		vin.PosL.y = sin(vin.PosL.x + vin.PosL.z) * sint*0.5f;
-		vin.NormalL = float3(-sint * 0.5f*cos(vin.PosL.x), 1, -sint * 0.5f*cos(vin.PosL.z));
-        vin.NormalL = normalize(vin.NormalL);
-    }
-    else
-    {
-        float sint = sin(cbTime / 15.0f);
-        vin.PosL.y += cbWaterFactor * sint*0.5f;
-    }
+	VertexOut vout;
+	vout.CenterW = vin.CenterW;
+	vout.SizeW = vin.SizeW;
+	return vout;
+}
 
-	// Compute world position
-        float4 posW = mul(float4(vin.PosL, 1.0f), cbWorld);
-        vout.PosW = posW.xyz;
-		vout.PosW.x /= posW.w;
-		vout.PosW.y /= posW.w;
-		vout.PosW.z /= posW.w;
 
-	// Compute world normal
-        vout.NormalW = mul(vin.NormalL, (float3x3) cbWorld);
 
-	// Compute projected position
-        vout.PosP = mul(posW, cbViewProj);
-	
-    // Apply texture tranformation for creating some effects
-    // TexC - 2D coordinates, converts them to homogolenous space (z = 0 and w = 1.0f)
-        vout.TexC = mul(mul(float4(vin.TexC, 0.0f, 1.0f), cbTexTransform), cbMatTransform).xy;
-   
 
-        return vout;
-    }
-
-float4 PS(VertexOut pin) : SV_Target
+[maxvertexcount(4)]
+void GS(point VertexOut gin[1],
+		uint primID: SV_PrimitiveID,
+		inout TriangleStream<GeoOut> triStream)
 {
-	float4 diffuseAlbedo = tDiffuseMap.Sample(sAnisotropicWrap, pin.TexC) * cbDiffuseAlbedo;
+	float3 up = float3(0.0f, 1.0f, 0.0f);
+	float3 look = cbCameraPosW - gin[0].CenterW;
+	look.y = 0.0f;
+	look = normalize(look);
+	float3 right = cross(up, look);
+
+	float halfWidth = 0.5f*gin[0].SizeW.x;
+	float halfHeight = 0.5f*gin[0].SizeW.y;
+	float4 v[4];
+	v[0] = float4(gin[0].CenterW + halfWidth * right -
+				  halfHeight * up, 1.0f);
+	v[1] = float4(gin[0].CenterW + halfWidth * right +
+				  halfHeight * up, 1.0f);
+	v[2] = float4(gin[0].CenterW - halfWidth * right -
+				  halfHeight * up, 1.0f);
+	v[3] = float4(gin[0].CenterW - halfWidth * right +
+				  halfHeight * up, 1.0f);
+
+	float2 texC[4] =
+	{
+		float2(0.0f, 1.0f),
+		float2(0.0f, 0.0f),
+		float2(1.0f, 1.0f),
+		float2(1.0f, 0.0f)
+	};
+
+	GeoOut gout;
+	[unroll]
+	for (int i = 0; i < 4; ++i)
+	{
+		gout.PosH = mul(v[i], cbViewProj);
+		gout.PosW = v[i].xyz;
+		gout.NormalW = look;
+		gout.TexC = texC[i];
+		gout.PrimID = primID;
+		triStream.Append(gout);
+	}
+
+}
+
+
+float4 PS(GeoOut pin) : SV_Target
+{
+	float3 uvw = float3(pin.TexC, pin.PrimID+1 % 3);
+	float4 diffuseAlbedo = gTreeMapArray.Sample(
+		sAnisotropicWrap, uvw) * cbDiffuseAlbedo;
 
 #ifdef ALPHA_TEST
 	clip(diffuseAlbedo.a - 0.1f);

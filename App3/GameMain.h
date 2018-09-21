@@ -22,6 +22,7 @@ namespace WoodenEngine
 	class WLightDirectional;
 	class WLightPoint;
 	class WLightSpot;
+	class FFilterBlur;
 
 	/*!
 	 * \class FGameMain
@@ -202,6 +203,11 @@ namespace WoodenEngine
 		  */
 		void InitViewport();
 
+		/** @brief Initializes rendering filters
+		  * @return (void)
+		  */
+		void InitFilters();
+
 		/** @brief Animates water materials. Shifts water's textures coordinates
 		  * @return (void)
 		  */
@@ -309,6 +315,7 @@ namespace WoodenEngine
 		uint8 iCurrFrameResource = 0;
 
 		// Current frame resource
+
 		FFrameResource* CurrFrameResource;
 		
 		// Array with all existing objects (renderable and not renderable)
@@ -325,6 +332,8 @@ namespace WoodenEngine
 		// Number const buffers for renderable objects
 		uint8 NumRenderableObjectsConstBuffers = 0;
 
+		std::unique_ptr<FFilterBlur> FilterBlur;
+
 		std::unique_ptr<FGameResource> GameResources;
 		std::unique_ptr<FFrameResource> FramesResource[NMR_SWAP_BUFFERS];
 
@@ -333,8 +342,7 @@ namespace WoodenEngine
 		ComPtr<ID3D12Resource> SwapChainBuffers[NMR_SWAP_BUFFERS];
 		ComPtr<ID3D12Resource> DepthStencilBuffer;
 
-		ComPtr<ID3D12RootSignature> RootSignature;
-
+		std::unordered_map<std::string, ComPtr<ID3D12RootSignature>> RootSignatures;
 		std::unordered_map<std::string, ComPtr<ID3D12PipelineState>> PipelineStates;
 		
 		uint16 RTVDescriptorHandleIncrementSize = 0;

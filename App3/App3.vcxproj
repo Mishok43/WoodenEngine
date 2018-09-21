@@ -229,6 +229,7 @@
     <ClInclude Include="Common\d3dx12.h" />
     <ClInclude Include="Common\DDSTextureLoader.h" />
     <ClInclude Include="EngineSettings.h" />
+    <ClInclude Include="FilterBlur.h" />
     <ClInclude Include="FloatingLightPoint.h" />
     <ClInclude Include="GameMain.h" />
     <ClInclude Include="Common\DirectXHelper.h" />
@@ -250,6 +251,7 @@
     <ClCompile Include="App.cpp" />
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="Common\DDSTextureLoader.cpp" />
+    <ClCompile Include="FliterBlur.cpp" />
     <ClCompile Include="FloatingLightPoint.cpp" />
     <ClCompile Include="GameMain.cpp" />
     <ClCompile Include="FrameResource.cpp" />
