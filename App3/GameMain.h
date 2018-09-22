@@ -3,7 +3,7 @@
 #include <unordered_map>
 #include <iostream>
 #include <vector>
-
+#include <array>
 
 #include "EngineSettings.h"
 #include "pch.h"
@@ -23,7 +23,7 @@ namespace WoodenEngine
 	class WLightPoint;
 	class WLightSpot;
 	class FFilterBlur;
-
+	class FFilterSobel;
 	/*!
 	 * \class FGameMain
 	 *
@@ -34,8 +34,9 @@ namespace WoodenEngine
 	 */
 	class FGameMain
  	{
-	public:
 
+	public:
+		
 		/*!
 		* \enum ERenderLayer
 		*
@@ -223,7 +224,7 @@ namespace WoodenEngine
 		/** @brief Builds root signature
 		  * @return (void)
 		  */
-		void BuildRootSignature();
+		void BuildRootSignatures();
 		
 		
 		/** @brief Compiles pixel and vertex shaders
@@ -318,6 +319,8 @@ namespace WoodenEngine
 
 		FFrameResource* CurrFrameResource;
 		
+		std::array<CD3DX12_GPU_DESCRIPTOR_HANDLE, 3> BackBufferSRVGPUHandle;
+
 		// Array with all existing objects (renderable and not renderable)
 		std::vector<std::unique_ptr<WObject>> Objects;
 
@@ -333,6 +336,7 @@ namespace WoodenEngine
 		uint8 NumRenderableObjectsConstBuffers = 0;
 
 		std::unique_ptr<FFilterBlur> FilterBlur;
+		std::unique_ptr<FFilterSobel> FilterSobel;
 
 		std::unique_ptr<FGameResource> GameResources;
 		std::unique_ptr<FFrameResource> FramesResource[NMR_SWAP_BUFFERS];

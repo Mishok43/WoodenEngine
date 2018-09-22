@@ -12,6 +12,7 @@
 #include "FloatingLightPoint.h"
 #include "ShaderStructures.h"
 #include "FilterBlur.h"
+#include "FilterSobel.h"
 
 #define _DEBUG
 
@@ -50,7 +51,7 @@ namespace WoodenEngine
 		InitTexturesViews();
 
 		InitShaders();
-		BuildRootSignature();
+		BuildRootSignatures();
 		BuildPipelineStateObject();
 		InitFilters();
 
@@ -606,7 +607,7 @@ namespace WoodenEngine
 		D3D12_DESCRIPTOR_HEAP_DESC srvDescriptorHeapDesc = {};
 		srvDescriptorHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 		srvDescriptorHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-		srvDescriptorHeapDesc.NumDescriptors = GameResources->GetNumTexturesData()+4;
+		srvDescriptorHeapDesc.NumDescriptors = GameResources->GetNumTexturesData()+5;
 		DX::ThrowIfFailed(Device->CreateDescriptorHeap(&srvDescriptorHeapDesc, IID_PPV_ARGS(&SRVDescriptorHeap)));
 	}
 
@@ -670,6 +671,36 @@ namespace WoodenEngine
 			Device->CreateRenderTargetView(SwapChainBuffers[i].Get(), nullptr, RTVCPUHandle);
 			RTVCPUHandle.Offset(1, RTVDescriptorHandleIncrementSize);
 		}
+
+
+		auto SRVCPUHandle = CD3DX12_CPU_DESCRIPTOR_HANDLE{
+			SRVDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), 
+			(int32_t)GameResources->GetNumTexturesData(), CBVSRVDescriptorHandleIncrementSize};
+
+		auto SRVGPUHandle = CD3DX12_GPU_DESCRIPTOR_HANDLE{
+			SRVDescriptorHeap->GetGPUDescriptorHandleForHeapStart(),
+			(int32_t)GameResources->GetNumTexturesData(), CBVSRVDescriptorHandleIncrementSize
+		};
+
+
+		auto RenderTargetSRVDesc = D3D12_SHADER_RESOURCE_VIEW_DESC{};
+		ZeroMemory(&RenderTargetSRVDesc, sizeof(D3D12_SHADER_RESOURCE_VIEW_DESC));
+		RenderTargetSRVDesc.Format = BufferFormat;
+		RenderTargetSRVDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+		RenderTargetSRVDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+		RenderTargetSRVDesc.Texture2D.MipLevels = 1;
+		RenderTargetSRVDesc.Texture2D.MostDetailedMip = 0;
+
+		for (int i = 0; i < NMR_SWAP_BUFFERS; ++i)
+		{
+			BackBufferSRVGPUHandle[i] = SRVGPUHandle;
+			
+			Device->CreateShaderResourceView(
+				SwapChainBuffers[i].Get(),
+				&RenderTargetSRVDesc, SRVCPUHandle);
+			SRVCPUHandle = SRVCPUHandle.Offset(1, CBVSRVDescriptorHandleIncrementSize);
+			SRVGPUHandle = SRVGPUHandle.Offset(1, CBVSRVDescriptorHandleIncrementSize);
+		}
 	}
 
 	void FGameMain::InitShaders()
@@ -714,6 +745,8 @@ namespace WoodenEngine
 
 		Shaders["blurVertCS"] = DX::CompileShader(L"Shaders\\BlurCS.hlsl", nullptr, "BlurVertCS", "cs_5_0");
 		Shaders["blurHorizCS"] = DX::CompileShader(L"Shaders\\BlurCS.hlsl", nullptr, "BlurHorizCS", "cs_5_0");
+
+		Shaders["sobelCS"] = DX::CompileShader(L"Shaders\\SobelCS.hlsl", nullptr, "SobelCS", "cs_5_0");
 	}
 
 	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> FGameMain::GetStaticSamplers() const
@@ -774,7 +807,7 @@ namespace WoodenEngine
 	}
 
 
-	void FGameMain::BuildRootSignature()
+	void FGameMain::BuildRootSignatures()
 	{
 		// Initialize parameters
 
@@ -856,6 +889,37 @@ namespace WoodenEngine
 		DX::ThrowIfFailed(Device->CreateRootSignature(
 			0, SerializedBlurRootSignature->GetBufferPointer(),
 			SerializedBlurRootSignature->GetBufferSize(), IID_PPV_ARGS(&RootSignatures["blur"])));
+
+		CD3DX12_DESCRIPTOR_RANGE SobelSRVTable;
+		SobelSRVTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
+
+		CD3DX12_DESCRIPTOR_RANGE SobelUAVTable;
+		SobelUAVTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0);
+
+		std::array<CD3DX12_ROOT_PARAMETER, 2> SobelSlotRootParameter;
+		SobelSlotRootParameter[0].InitAsDescriptorTable(1, &SobelSRVTable);
+		SobelSlotRootParameter[1].InitAsDescriptorTable(1, &SobelUAVTable);
+		
+		auto SobelRootSignatureDesc = CD3DX12_ROOT_SIGNATURE_DESC(
+			SobelSlotRootParameter.size(), SobelSlotRootParameter.data(), 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT
+		);
+
+		ComPtr<ID3DBlob> SobelSerializedRootSignature = nullptr;
+		ComPtr<ID3DBlob> SobelErrorBlob = nullptr;
+		auto SobelHR = D3D12SerializeRootSignature(
+			&SobelRootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1,
+			SobelSerializedRootSignature.GetAddressOf(), SobelErrorBlob.GetAddressOf());
+
+		if (SobelErrorBlob != nullptr)
+		{
+			::OutputDebugStringA((char*)SobelErrorBlob->GetBufferPointer());
+		}
+
+		DX::ThrowIfFailed(SobelHR);
+
+		DX::ThrowIfFailed(Device->CreateRootSignature(
+			0, SobelSerializedRootSignature->GetBufferPointer(),
+			SobelSerializedRootSignature->GetBufferSize(), IID_PPV_ARGS(&RootSignatures["sobel"])));
 	}
 
 	void FGameMain::BuildPipelineStateObject()
@@ -1119,10 +1183,25 @@ namespace WoodenEngine
 		DX::ThrowIfFailed(Device->CreateComputePipelineState(
 			&BlurHorizPSODesc,
 			IID_PPV_ARGS(&PipelineStates["blurHoriz"])));
+
+		D3D12_COMPUTE_PIPELINE_STATE_DESC SobelPSODesc = {};
+		SobelPSODesc.pRootSignature = RootSignatures["sobel"].Get();
+		SobelPSODesc.CS =
+		{
+			Shaders["sobelCS"]->GetBufferPointer(), Shaders["sobelCS"]->GetBufferSize()
+		};
+		SobelPSODesc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
+		DX::ThrowIfFailed(Device->CreateComputePipelineState(
+			&SobelPSODesc,
+			IID_PPV_ARGS(&PipelineStates["sobel"])
+		));
 	}
 
 	void WoodenEngine::FGameMain::InitFilters()
 	{
+
+		// Enables blurring filter
+		/* 
 		auto NumMainDescriptors = GameResources->GetNumTexturesData();
 
 		auto SRVCPUDescriptorHandle = CD3DX12_CPU_DESCRIPTOR_HANDLE(
@@ -1142,6 +1221,29 @@ namespace WoodenEngine
 			CBVSRVDescriptorHandleIncrementSize,
 			CMDList, Device
 		);
+		*/
+
+
+		// Enables
+		auto NumMainDescriptors = GameResources->GetNumTexturesData()+NMR_SWAP_BUFFERS;
+
+		auto SRVCPUDescriptorHandle = CD3DX12_CPU_DESCRIPTOR_HANDLE(
+			SRVDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
+			NumMainDescriptors, CBVSRVDescriptorHandleIncrementSize);
+
+		auto SRVGPUDescriptorHandle = CD3DX12_GPU_DESCRIPTOR_HANDLE(
+			SRVDescriptorHeap->GetGPUDescriptorHandleForHeapStart(),
+			NumMainDescriptors, CBVSRVDescriptorHandleIncrementSize);
+
+		FilterSobel = std::make_unique<FFilterSobel>();
+		FilterSobel->Init(
+			Window->Bounds.Width,
+			Window->Bounds.Height,
+			SRVCPUDescriptorHandle,
+			SRVGPUDescriptorHandle,
+			CMDList, Device
+		);
+
 	}
 
 	void WoodenEngine::FGameMain::Update(float dtime)
@@ -1451,8 +1553,8 @@ namespace WoodenEngine
 
 		RenderObjects(ERenderLayer::Opaque, CMDList);
 
-		CMDList->SetPipelineState(PipelineStates["debugNormals"].Get());
-		RenderObjects(ERenderLayer::Opaque, CMDList);
+		//CMDList->SetPipelineState(PipelineStates["debugNormals"].Get());
+		//RenderObjects(ERenderLayer::Opaque, CMDList);
 
 		CMDList->OMSetStencilRef(1);
 		CMDList->SetPipelineState(PipelineStates["markmirrors"].Get());
@@ -1488,6 +1590,9 @@ namespace WoodenEngine
 		RenderObjects(ERenderLayer::Mirrors, CMDList);
 		RenderObjects(ERenderLayer::Transparent, CMDList);
 
+
+		// Blurring algorithm
+		/*
 		FilterBlur->Execute(
 			PipelineStates["blurHoriz"],
 			PipelineStates["blurVert"],
@@ -1507,7 +1612,7 @@ namespace WoodenEngine
 		};
 
 		CMDList->ResourceBarrier(
-			2, Barriers_0.data()
+			Barriers_0.size(), Barriers_0.data()
 		);
 
 		CMDList->CopyResource(CurrentBackBuffer(), BluredOutput);
@@ -1524,8 +1629,50 @@ namespace WoodenEngine
 
 
 		CMDList->ResourceBarrier(
-			2, Barriers_1.data()
+			Barriers_1.size(), Barriers_1.data()
+		);*/
+
+		auto* SobelResource = FilterSobel->Execute(
+			PipelineStates["sobel"],
+			RootSignatures["sobel"],
+			CMDList,
+			CurrentBackBuffer(),
+			BackBufferSRVGPUHandle[iCurrBackBuffer]
 		);
+
+		std::array<D3D12_RESOURCE_BARRIER, 2> Barriers_0 = {
+			CD3DX12_RESOURCE_BARRIER::Transition(
+				CurrentBackBuffer(),
+				D3D12_RESOURCE_STATE_GENERIC_READ,
+				D3D12_RESOURCE_STATE_COPY_SOURCE),
+			CD3DX12_RESOURCE_BARRIER::Transition(
+				SobelResource,
+				D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+				D3D12_RESOURCE_STATE_COPY_DEST
+			)
+		};
+
+
+		CMDList->ResourceBarrier(
+			Barriers_0.size(), Barriers_0.data());
+
+		CMDList->CopyResource(CurrentBackBuffer(), SobelResource);
+
+		std::array<D3D12_RESOURCE_BARRIER, 2> Barriers_1 = {
+			CD3DX12_RESOURCE_BARRIER::Transition(
+				CurrentBackBuffer(),
+				D3D12_RESOURCE_STATE_COPY_DEST,
+				D3D12_RESOURCE_STATE_PRESENT
+			),
+			CD3DX12_RESOURCE_BARRIER::Transition(
+				SobelResource,
+				D3D12_RESOURCE_STATE_COPY_SOURCE,
+				D3D12_RESOURCE_STATE_COMMON
+			)
+		};
+
+		CMDList->ResourceBarrier(
+			Barriers_1.size(), Barriers_1.data());
 
 		DX::ThrowIfFailed(CMDList->Close());
 		ID3D12CommandList* cmdLists[] = { CMDList.Get() };

@@ -86,13 +86,10 @@ namespace WoodenEngine
 		UAVBlurResourceDesc.Format = BufferFormat;
 		UAVBlurResourceDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
 
-
-
 		BlurASRVCPUDescriptorHandle = SRVUAVCPUHandle;
 		BlurAUAVCPUDescriptorHandle = SRVUAVCPUHandle.Offset(1, SRVUAVDescriptorHandleIncrementSize);
 		BlurBSRVCPUDescriptorHandle = SRVUAVCPUHandle.Offset(1, SRVUAVDescriptorHandleIncrementSize);
 		BlurBUAVCPUDescriptorHandle = SRVUAVCPUHandle.Offset(1, SRVUAVDescriptorHandleIncrementSize);
-
 
 		BlurASRVGPUDescriptorHandle = SRVUAVGPUHandle;
 		BlurAUAVGPUDescriptorHandle = SRVUAVGPUHandle.Offset(1, SRVUAVDescriptorHandleIncrementSize);
@@ -138,7 +135,7 @@ namespace WoodenEngine
 				D3D12_RESOURCE_STATE_COPY_DEST),
 		};
 
-		CMDList->ResourceBarrier(2, Barriers_0.data());
+		CMDList->ResourceBarrier(Barriers_0.size(), Barriers_0.data());
 
 		CMDList->CopyResource(BlurResourceA.Get(), Input);
 
@@ -154,7 +151,7 @@ namespace WoodenEngine
 		};
 
 		
-		CMDList->ResourceBarrier(2, Barriers_1.data());
+		CMDList->ResourceBarrier(Barriers_1.size(), Barriers_1.data());
 
 		std::array<D3D12_RESOURCE_BARRIER, 2> Barriers_2 = {
 			CD3DX12_RESOURCE_BARRIER::Transition(
@@ -188,7 +185,7 @@ namespace WoodenEngine
 			auto NumGroupsX = (uint16_t)ceilf(RenderTargetWidth / 256.0f);
 			CMDList->Dispatch(NumGroupsX, RenderTargetHeight, 1);
 
-			CMDList->ResourceBarrier(2, Barriers_2.data());
+			CMDList->ResourceBarrier(Barriers_2.size(), Barriers_2.data());
 
 			CMDList->SetPipelineState(VertBlurPSO.Get());
 			CMDList->SetComputeRootDescriptorTable(1, BlurBSRVGPUDescriptorHandle);
@@ -197,7 +194,7 @@ namespace WoodenEngine
 			auto NumGroupsY = (uint16_t)ceilf(RenderTargetHeight / 256.0f);
 			CMDList->Dispatch(RenderTargetWidth, NumGroupsY, 1);
 
-			CMDList->ResourceBarrier(2, Barriers_3.data());
+			CMDList->ResourceBarrier(Barriers_3.size(), Barriers_3.data());
 		}
 
 		CMDList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
