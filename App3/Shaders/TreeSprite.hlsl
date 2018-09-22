@@ -24,9 +24,6 @@
 
 Texture2DArray gTreeMapArray : register(t0);
 
-
-Texture2D tDiffuseMap : register(t0);
-
 SamplerState sPointWrap : register(s0);
 SamplerState sPointClamp : register(s1);
 SamplerState sLinearWrap : register(s2);
@@ -179,6 +176,7 @@ void GS(point VertexOut gin[1],
 		gout.TexC = texC[i];
 		gout.PrimID = primID;
 		triStream.Append(gout);
+
 	}
 
 }
@@ -186,7 +184,7 @@ void GS(point VertexOut gin[1],
 
 float4 PS(GeoOut pin) : SV_Target
 {
-	float3 uvw = float3(pin.TexC, pin.PrimID+1 % 3);
+	float3 uvw = float3(pin.TexC, pin.PrimID % 3);
 	float4 diffuseAlbedo = gTreeMapArray.Sample(
 		sAnisotropicWrap, uvw) * cbDiffuseAlbedo;
 

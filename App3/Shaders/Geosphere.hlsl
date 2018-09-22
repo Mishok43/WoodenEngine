@@ -138,7 +138,7 @@ VertexOut VS(VertexIn vin)
 {
 	VertexOut vout;
 	vout.PosL = vin.PosL;
-	vout.NormalL = vin.NormaL;
+	vout.NormalL = vin.NormalL;
 	vout.TexC = vin.TexC;
 	return vout;
 }
@@ -173,36 +173,65 @@ void Subdivide(VertexOut inVerts[3],
 }
 
 
-[maxvertexcout(12)]
+[maxvertexcount(12)]
 void GS(triangle VertexOut gin[3],
 		uint primID: SV_PrimitiveID,
 		inout TriangleStream<GeoOut> triStream
 )
-{
-	VertexOut v[6];
-	Subdivide(gin, v);
-
-	GeoOut gout[6];
+{   
+    float3 centerPosW = cbWorld._m03_m13_m23;
+    float distanceEye = distance(centerPosW, cbCameraPosW);
+    
+    if (distanceEye >= 30.0f)
+    {
+        GeoOut gout[3];
 	[unroll]
-	for (int i = 0; i < 6; ++i)
-	{
-		gout[i].PosW = mul(float4(v[i].PosL, 1.0f), cbWorld);
-		gout[i].NormalW = mul(v[i].NormalL, (float3x3)cbWorld); // normalize in PS because optimization
-		gout[i].PosP = mul(gout[i].PosW, cbViewProj);
-		gout[i].TexC = mul(mul(float4(v[i].TexC, 0.0f, 1.0f), cbTexTransform), cbMatTransform).xy;
-	}
+        for (int i = 0; i < 3; ++i)
+        {
+            gout[i].PosW = mul(float4(gin[i].PosL, 1.0f), cbWorld);
+            gout[i].NormalW = mul(gin[i].NormalL, (float3x3) cbWorld); // normalize in PS because optimization
+            gout[i].PosP = mul(float4(gout[i].PosW, 1.0f), cbViewProj);
+            gout[i].TexC = mul(mul(float4(gin[i].TexC, 0.0f, 1.0f), cbTexTransform), cbMatTransform).xy;
+        }
+    
+        triStream.Append(gout[0]);
+        triStream.Append(gout[1]);
+        triStream.Append(gout[2]);
+    }
+    else
+    {
+       
 
+            VertexOut v[6];
+
+            Subdivide(gin, v);
+        
+            GeoOut gout[6];
 	[unroll]
-	for (int i = 0; i < 5; ++i)
-	{
-		triStream.Append(gout[i]);
-	}
+            for (int i = 0; i < 6; ++i)
+            {
+                gout[i].PosW = mul(float4(v[i].PosL, 1.0f), cbWorld);
+                gout[i].NormalW = mul(v[i].NormalL, (float3x3) cbWorld); // normalize in PS because optimization
+                gout[i].PosP = mul(float4(gout[i].PosW, 1.0f), cbViewProj);
+                gout[i].TexC = mul(mul(float4(v[i].TexC, 0.0f, 1.0f), cbTexTransform), cbMatTransform).xy;
+            }
+    
+	[unroll]
+            for (int j = 0; j < 6; ++j)
+            {
+                triStream.Append(gout[j]);
+            }
+    
+            triStream.RestartStrip();
 
-	triStream.RestartStrip();
+            triStream.Append(gout[1]);
+            triStream.Append(gout[5]);
+            triStream.Append(gout[3]);
+        
+   
+    }
 
-	triStream.Append(gout[1]);
-	triStream.Append(gout[5]);
-	triStream.Append(gout[3]);
+   
 }
 
 float4 PS(GeoOut pin) : SV_Target
