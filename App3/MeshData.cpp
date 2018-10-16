@@ -321,6 +321,67 @@ namespace WoodenEngine
 		return MeshData;
 	}
 
+	std::unique_ptr<WoodenEngine::FMeshRawData> FMeshGenerator::CreateQuad(
+		float Width,
+		float Height) const noexcept
+	{
+		auto QuadMeshData = std::make_unique<FMeshRawData>("Quad");
+
+		const auto WidthHalf = Width / 2.0f;
+		const auto DepthHalf = Height / 2.0f;
+
+		QuadMeshData->Vertices = {
+			{ -WidthHalf, 0.0f, DepthHalf, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f },
+			{ WidthHalf, 0.0f, DepthHalf, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f },
+			{ -WidthHalf, 0.0f, -DepthHalf, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f },
+			{ WidthHalf, 0.0f, -DepthHalf, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f },
+			
+		};
+
+		QuadMeshData->Indices = {
+			
+			0, 1, 2, 3
+		};
+
+		return QuadMeshData;
+	}
+
+	std::unique_ptr<WoodenEngine::FMeshRawData> FMeshGenerator::CreateBezierGrid() const noexcept
+	{
+		auto QuadMeshData = std::make_unique<FMeshRawData>("BezierGrid");
+
+		QuadMeshData->Vertices = {
+		    XMFLOAT3(-10.0f, -10.0f, +15.0f),
+			XMFLOAT3(-5.0f, 0.0f, +15.0f),    
+			XMFLOAT3(+5.0f, 0.0f, +15.0f),
+			XMFLOAT3(+10.0f, 0.0f, +15.0f),    
+
+			XMFLOAT3(-15.0f, 0.0f, +5.0f),    
+			XMFLOAT3(-5.0f, 0.0f, +5.0f),    
+			XMFLOAT3(+5.0f, 20.0f, +5.0f),    
+			XMFLOAT3(+15.0f, 0.0f, +5.0f),    
+			
+			XMFLOAT3(-15.0f, 0.0f, -5.0f),    
+			XMFLOAT3(-5.0f, 0.0f, -5.0f),    
+			XMFLOAT3(+5.0f, 0.0f, -5.0f),    
+			XMFLOAT3(+15.0f, 0.0f, -5.0f),    
+			
+			XMFLOAT3(-10.0f, 10.0f, -15.0f),    
+			XMFLOAT3(-5.0f, 0.0f, -15.0f),        
+			XMFLOAT3(+5.0f, 0.0f, -15.0f),    
+			XMFLOAT3(+25.0f, 10.0f, -15.0f)
+		};
+
+		QuadMeshData->Indices = {
+			0, 1, 2, 3,    
+			4, 5, 6, 7,    
+			8, 9, 10, 11,     
+			12, 13, 14, 15
+		};
+
+		return QuadMeshData;
+	}
+
 	std::unique_ptr<WoodenEngine::FMeshRawData> FMeshGenerator::CreateLandscapeGrid(
 		float Width,
 		float Height, 

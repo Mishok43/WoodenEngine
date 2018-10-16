@@ -356,6 +356,8 @@ namespace WoodenEngine
 		// Build and load static meshes
 		auto MeshGenerator = std::make_unique<FMeshGenerator>();
 		
+		auto QuadMesh = MeshGenerator->CreateQuad(40.0f, 40.0f);
+
 		auto BoxMesh = MeshGenerator->CreateBox(1.0f, 1.0f, 1.0f);
 
 		auto SphereMesh = MeshGenerator->CreateSphere(1.0f, 15.0f, 15.0f);
@@ -370,13 +372,17 @@ namespace WoodenEngine
 
 		auto PlaneMesh = MeshGenerator->CreateGrid(23.0f, 23.0f, 30, 30);
 
+		auto BezierGridMesh = MeshGenerator->CreateBezierGrid();
+
 		auto MeshParser = std::make_unique<FMeshParser>();
 
 		auto DinoMesh = MeshParser->ParseObjFile("Assets\\Models\\robot.obj");
 		DinoMesh->Name = "dino";
 
+		const auto QuadSubmeshName = QuadMesh->Name;
 		const auto BoxSubmeshName = BoxMesh->Name;
 		const auto SphereSubmeshName = SphereMesh->Name;
+		const auto BezierGridSubmeshName = BezierGridMesh->Name;
 		//const auto dinoSubmeshName = dinoMesh->Name;
 		const auto PlaneSubmeshName = PlaneMesh->Name;
 		const auto LandscapeSubmeshName = LandscapeMesh->Name;
@@ -389,6 +395,8 @@ namespace WoodenEngine
 		GeometricSubmeshes.push_back(std::move(BoxMesh));
 		GeometricSubmeshes.push_back(std::move(SphereMesh));
 		GeometricSubmeshes.push_back(std::move(GeosphereMesh));
+		GeometricSubmeshes.push_back(std::move(QuadMesh));
+		GeometricSubmeshes.push_back(std::move(BezierGridMesh));
 		GameResources->LoadStaticMesh(std::move(GeometricSubmeshes), GeoMeshName, CMDList);
 
 		const std::string& EnviromentMeshName = "env";
@@ -405,6 +413,7 @@ namespace WoodenEngine
 
 		uint8 iConstBuffer = 0;
 
+		/*
 		auto LandscapeObject = std::make_unique<WObject>(EnviromentMeshName, LandscapeSubmeshName);
 		XMFLOAT4X4 LandscapeTextureTransform;
 		XMStoreFloat4x4(&LandscapeTextureTransform, XMMatrixScaling(6.0f, 6.0f, 1.0f));
@@ -415,6 +424,29 @@ namespace WoodenEngine
 		
 		AddObjectToScene(ERenderLayer::Opaque, LandscapeObject.get());
 		Objects.push_back(std::move(LandscapeObject));
+		*/
+
+
+		auto LandscapeObject = std::make_unique<WObject>(GeoMeshName, QuadSubmeshName);
+		XMFLOAT4X4 LandscapeTextureTransform;
+		XMStoreFloat4x4(&LandscapeTextureTransform, XMMatrixScaling(6.0f, 6.0f, 1.0f));
+		LandscapeObject->SetTextureTransform(std::move(LandscapeTextureTransform));
+		LandscapeObject->SetPosition(0, -2, 0);
+		LandscapeObject->SetWaterFactor(0);
+		LandscapeObject->SetMaterial(GameResources->GetMaterialData("grass"));
+		LandscapeObject->SetRenderPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);
+
+		AddObjectToScene(ERenderLayer::Landscape, LandscapeObject.get());
+		Objects.push_back(std::move(LandscapeObject));
+
+		auto BezierObject = std::make_unique<WObject>(GeoMeshName, BezierGridSubmeshName);
+		XMStoreFloat4x4(&LandscapeTextureTransform, XMMatrixScaling(6.0f, 6.0f, 1.0f));
+		BezierObject->SetPosition(25.0f, 5.0f, 0.0f);
+		BezierObject->SetWaterFactor(0);
+		BezierObject->SetMaterial(GameResources->GetMaterialData("grass"));
+		BezierObject->SetRenderPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_16_CONTROL_POINT_PATCHLIST);
+		AddObjectToScene(ERenderLayer::Bezier, BezierObject.get());
+		Objects.push_back(std::move(BezierObject));
 
 		auto WaterObject = std::make_unique<WObject>(EnviromentMeshName, PlaneSubmeshName);
 		XMFLOAT4X4 TextureTransform;
@@ -737,6 +769,16 @@ namespace WoodenEngine
 		Shaders["billboardGS"] = DX::CompileShader(L"Shaders\\TreeSprite.hlsl", OpaqueShaderDefines, "GS", "gs_5_0");
 		Shaders["billboardPS"] = DX::CompileShader(L"Shaders\\TreeSprite.hlsl", AlphaTestShaderDefines, "PS", "ps_5_0");
 		Shaders["billboardVS"] = DX::CompileShader(L"Shaders\\TreeSprite.hlsl", nullptr, "VS", "vs_5_0");
+
+		Shaders["landscapeHS"] = DX::CompileShader(L"Shaders\\Landscape.hlsl", nullptr, "HS", "hs_5_0");
+		Shaders["landscapeDS"] = DX::CompileShader(L"Shaders\\Landscape.hlsl", nullptr, "DS", "ds_5_0");
+		Shaders["landscapePS"] = DX::CompileShader(L"Shaders\\Landscape.hlsl", OpaqueShaderDefines, "PS", "ps_5_0");
+		Shaders["landscapeVS"] = DX::CompileShader(L"Shaders\\Landscape.hlsl", nullptr, "VS", "vs_5_0");
+
+		Shaders["bezierHS"] = DX::CompileShader(L"Shaders\\Bezier.hlsl", nullptr, "HS", "hs_5_0");
+		Shaders["bezierDS"] = DX::CompileShader(L"Shaders\\Bezier.hlsl", nullptr, "DS", "ds_5_0");
+		Shaders["bezierPS"] = DX::CompileShader(L"Shaders\\Bezier.hlsl", OpaqueShaderDefines, "PS", "ps_5_0");
+		Shaders["bezierVS"] = DX::CompileShader(L"Shaders\\Bezier.hlsl", nullptr, "VS", "vs_5_0");
 
 		Shaders["debugNormalsGS"] = DX::CompileShader(L"Shaders\\DebugNormals.hlsl", nullptr, "GS", "gs_5_0");
 		Shaders["debugNormalsPS"] = DX::CompileShader(L"Shaders\\DebugNormals.hlsl", nullptr, "PS", "ps_5_0");
@@ -1137,6 +1179,65 @@ namespace WoodenEngine
 			&GeospherePSODesc,
 			IID_PPV_ARGS(&PipelineStates["geosphere"])
 		));
+
+		auto LandscapePSODesc = OpaquePSODesc;
+		LandscapePSODesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH;
+		LandscapePSODesc.HS =
+		{
+			Shaders["landscapeHS"]->GetBufferPointer(), Shaders["landscapeHS"]->GetBufferSize()
+		};
+		
+		LandscapePSODesc.DS =
+		{
+			Shaders["landscapeDS"]->GetBufferPointer(), Shaders["landscapeDS"]->GetBufferSize()
+		};
+
+		LandscapePSODesc.PS =
+		{
+			Shaders["landscapePS"]->GetBufferPointer(), Shaders["landscapePS"]->GetBufferSize()
+		};
+
+		LandscapePSODesc.VS =
+		{
+			Shaders["landscapeVS"]->GetBufferPointer(), Shaders["landscapeVS"]->GetBufferSize()
+		};
+
+
+		DX::ThrowIfFailed(Device->CreateGraphicsPipelineState(
+			&LandscapePSODesc,
+			IID_PPV_ARGS(&PipelineStates["landscape"])
+		));
+
+
+		auto BezierPSODesc = OpaquePSODesc;
+		BezierPSODesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH;
+		BezierPSODesc.RasterizerState.FillMode = D3D12_FILL_MODE_WIREFRAME;
+		BezierPSODesc.HS =
+		{
+			Shaders["bezierHS"]->GetBufferPointer(), Shaders["bezierHS"]->GetBufferSize()
+		};
+
+		BezierPSODesc.DS =
+		{
+			Shaders["bezierDS"]->GetBufferPointer(), Shaders["bezierDS"]->GetBufferSize()
+		};
+
+		BezierPSODesc.PS =
+		{
+			Shaders["bezierPS"]->GetBufferPointer(), Shaders["bezierPS"]->GetBufferSize()
+		};
+
+		BezierPSODesc.VS =
+		{
+			Shaders["bezierVS"]->GetBufferPointer(), Shaders["bezierVS"]->GetBufferSize()
+		};
+
+
+		DX::ThrowIfFailed(Device->CreateGraphicsPipelineState(
+			&BezierPSODesc,
+			IID_PPV_ARGS(&PipelineStates["bezier"])
+		));
+
 
 		auto DebugNormalsPSODesc = OpaquePSODesc;
 		DebugNormalsPSODesc.GS =
@@ -1553,6 +1654,13 @@ namespace WoodenEngine
 
 		RenderObjects(ERenderLayer::Opaque, CMDList);
 
+		CMDList->SetPipelineState(PipelineStates["landscape"].Get());
+		RenderObjects(ERenderLayer::Landscape, CMDList);
+
+		CMDList->SetPipelineState(PipelineStates["bezier"].Get());
+		RenderObjects(ERenderLayer::Bezier, CMDList);
+
+
 		//CMDList->SetPipelineState(PipelineStates["debugNormals"].Get());
 		//RenderObjects(ERenderLayer::Opaque, CMDList);
 
@@ -1632,6 +1740,8 @@ namespace WoodenEngine
 			Barriers_1.size(), Barriers_1.data()
 		);*/
 
+
+/*
 		auto* SobelResource = FilterSobel->Execute(
 			PipelineStates["sobel"],
 			RootSignatures["sobel"],
@@ -1672,7 +1782,11 @@ namespace WoodenEngine
 		};
 
 		CMDList->ResourceBarrier(
-			Barriers_1.size(), Barriers_1.data());
+			Barriers_1.size(), Barriers_1.data());*/
+		
+		CMDList->ResourceBarrier(
+			1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT)
+		);
 
 		DX::ThrowIfFailed(CMDList->Close());
 		ID3D12CommandList* cmdLists[] = { CMDList.Get() };

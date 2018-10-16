@@ -220,6 +220,18 @@ namespace WoodenEngine
 		) const noexcept;
 
 
+		std::unique_ptr<FMeshRawData> CreateBezierGrid() const noexcept;
+
+		/** @brief Generates a sized quad mesh
+		  * @param Width quad's width (float)
+		  * @param Height (float)
+		  * @return (std::unique_ptr<WoodenEngine::FMeshRawData>)
+		  */
+		std::unique_ptr<FMeshRawData> CreateQuad(
+			float Width,
+			float Height
+		) const noexcept;
+
 		/** @brief Generates a landscape grid based of function:
 		  * y = 3(sin(x) + cos(z))
 		  * @param Width (float)

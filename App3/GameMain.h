@@ -56,6 +56,8 @@ namespace WoodenEngine
 			Shadow,
 			Billboard,
 			Geosphere,
+			Landscape,
+			Bezier,
 			Count
 		};
 
