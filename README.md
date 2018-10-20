@@ -1,5 +1,5 @@
 # WoodenEngine
-Wooden Engine is 3D Graphics Engine for rendering 3D scenes with minimal logic. It was started as my first course project. Wooden because of its technological capabilities and because of my second name - Derevyannykh )
+Wooden Engine is 3D Graphics Engine for rendering 3D scenes with minimal logic. It was started as my first course project. )
 (translation from Russian to English : "wooden")
 
 Technologies:
