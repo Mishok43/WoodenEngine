@@ -20,6 +20,9 @@ Implemented features:
 - Planar shadows
 - Materials
 - Normal mapping
+- Resource manager
+- Postprocessing effects (blur for example) using compute shaders
+- Simple water
 
 Demo:
 https://www.youtube.com/watch?v=zZzk-y_vu6I
