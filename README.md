@@ -24,6 +24,16 @@ Implemented features:
 - Postprocessing effects (blur for example) using compute shaders
 - Simple water
 
+In the future:
+- Animations
+- Particle system
+- Dynamic indexing
+- Cube map
+
+
+Based on: Introduction to 3d game programming with directx 12 Frank Luna, 
+          Effective modern C++ - Scott Meyers
+
 Demo:
 https://www.youtube.com/watch?v=zZzk-y_vu6I
 
